@@ -1,0 +1,49 @@
+@inject TiendaApi Tienda
+
+<div class="ratio ratio-@Relacion @Clase">
+    @if (_url != null && !_fallo)
+    {
+        <img class="producto-img" src="@_url" alt="@Producto.Nombre" loading="lazy" @onerror="Fallo" />
+    }
+    else
+    {
+        <div class="imagen-vacia" role="img" aria-label="@Producto.Nombre (sin imagen)">
+            <i class="bi bi-@Icono" aria-hidden="true"></i>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Producto Producto { get; set; } = default!;
+    /// <summary>Proporción de la imagen (1x1, 4x3, 16x9...). Ver las clases ratio de Bootstrap.</summary>
+    [Parameter] public string Relacion { get; set; } = "1x1";
+    [Parameter] public string Clase { get; set; } = string.Empty;
+
+    private string? _url;
+    private bool _fallo;
+    private string? _claveCargada;
+
+    // Ícono de reemplazo según la categoría cuando el producto no tiene imagen.
+    private string Icono => Producto.Categoria switch
+    {
+        "Electrónica" => "headphones",
+        "Hogar" => "house-door",
+        "Deportes" => "trophy",
+        "Libros" => "book",
+        _ => "box-seam"
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        string clave = $"{Producto.ProductoId}:{Producto.ImagenRuta}";
+
+        if (clave != _claveCargada)
+        {
+            _claveCargada = clave;
+            _fallo = false;
+            _url = await Tienda.UrlImagenAsync(Producto);
+        }
+    }
+
+    private void Fallo() => _fallo = true;
+}

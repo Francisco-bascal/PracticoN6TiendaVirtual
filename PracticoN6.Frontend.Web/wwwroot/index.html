@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#1f3a5f" />
+    <title>Tienda Móvil</title>
+    <base href="/" />
+    <!-- Bootstrap 5 e íconos empaquetados en el proyecto compartido (nunca desde un CDN) -->
+    <link rel="stylesheet" href="_content/PracticoN6.Frontend.Shared/lib/bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="_content/PracticoN6.Frontend.Shared/lib/bootstrap-icons/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="_content/PracticoN6.Frontend.Shared/css/app.css" />
+    <!-- Tema claro/oscuro según la preferencia del dispositivo (antes de dibujar, para evitar el parpadeo) -->
+    <script>
+        (function () {
+            var m = window.matchMedia('(prefers-color-scheme: dark)');
+            function aplicar() { document.documentElement.setAttribute('data-bs-theme', m.matches ? 'dark' : 'light'); }
+            aplicar();
+            m.addEventListener('change', aplicar);
+        })();
+    </script>
+</head>
+
+<body>
+    <div id="app"><div class="pantalla-carga">Cargando Tienda Móvil...</div></div>
+
+    <div id="blazor-error-ui">
+        Ocurrió un error inesperado.
+        <a href="" class="reload">Recargar</a>
+        <a class="dismiss">🗙</a>
+    </div>
+
+    <script src="_content/PracticoN6.Frontend.Shared/js/tienda.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+
+</html>

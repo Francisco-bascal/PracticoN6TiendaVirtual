@@ -1,0 +1,39 @@
+@using PracticoN6.Frontend.Shared.Layout
+
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="rutaDatos">
+            <AuthorizeRouteView RouteData="@rutaDatos" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    @if (context.User.Identity?.IsAuthenticated != true)
+                    {
+                        <RedirectToLogin />
+                    }
+                    else
+                    {
+                        <div class="container-md py-4 text-center">
+                            <i class="bi bi-shield-lock display-3 text-danger" aria-hidden="true"></i>
+                            <h1 class="h4 mt-2">Acceso restringido</h1>
+                            <Alerta Tipo="error">Su usuario no tiene permisos para ver esta pantalla.</Alerta>
+                            <a class="btn btn-primary" href="">Ir al catálogo</a>
+                        </div>
+                    }
+                </NotAuthorized>
+                <Authorizing>
+                    <Cargando Texto="Iniciando..." />
+                </Authorizing>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@rutaDatos" Selector="h1" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <div class="container-md py-4 text-center">
+                    <i class="bi bi-compass display-3 text-body-secondary" aria-hidden="true"></i>
+                    <h1 class="h4 mt-2">Pantalla no encontrada</h1>
+                    <p class="text-body-secondary">La dirección que buscaba no existe.</p>
+                    <a class="btn btn-primary" href="">Ir al catálogo</a>
+                </div>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

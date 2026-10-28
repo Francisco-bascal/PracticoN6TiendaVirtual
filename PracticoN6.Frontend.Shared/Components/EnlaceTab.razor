@@ -1,0 +1,38 @@
+@implements IDisposable
+@inject NavigationManager Navegacion
+
+@* Pestaña de la barra inferior. Marca la sección activa con aria-current (lo que lee un lector de pantalla). *@
+<a href="@Href" class="tab @(Activa ? "activo" : "")" aria-current="@(Activa ? "page" : null)">
+    <span class="tab-icono">
+        <i class="bi bi-@Icono" aria-hidden="true"></i>
+        @if (Insignia > 0)
+        {
+            <span class="badge rounded-pill text-bg-danger tab-badge">@Insignia<span class="visually-hidden"> artículos en el carrito</span></span>
+        }
+    </span>
+    <span>@Texto</span>
+</a>
+
+@code {
+    [Parameter, EditorRequired] public string Href { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Icono { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Texto { get; set; } = string.Empty;
+    /// <summary>true = solo está activa con la ruta exacta (para el inicio); false = también con las rutas que cuelgan de ella.</summary>
+    [Parameter] public bool Exacta { get; set; }
+    [Parameter] public int Insignia { get; set; }
+
+    private bool Activa
+    {
+        get
+        {
+            string ruta = Navegacion.ToBaseRelativePath(Navegacion.Uri).Split('?', '#')[0].TrimEnd('/');
+            return Exacta ? ruta == Href : ruta == Href || ruta.StartsWith(Href + "/");
+        }
+    }
+
+    protected override void OnInitialized() => Navegacion.LocationChanged += AlNavegar;
+
+    private void AlNavegar(object? sender, LocationChangedEventArgs e) => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Navegacion.LocationChanged -= AlNavegar;
+}

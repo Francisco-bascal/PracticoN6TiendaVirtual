@@ -1,0 +1,12 @@
+{
+  "name": "tienda-movil-e2e",
+  "private": true,
+  "description": "Recorridos automáticos de la interfaz de la tienda (cliente y personal) con Playwright",
+  "scripts": {
+    "cliente": "node cliente.js",
+    "personal": "node personal.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0"
+  }
+}

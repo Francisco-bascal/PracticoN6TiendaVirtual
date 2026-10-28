@@ -1,0 +1,40 @@
+@page "/admin"
+@attribute [Authorize(Roles = Roles.Personal)]
+@inject SesionService Sesion
+
+<div class="container-md py-3">
+    <EncabezadoPagina Titulo="Panel de gestión" Icono="gear"
+                      Subtitulo="@($"Sesión iniciada como {Sesion.NombreUsuario} ({Sesion.Rol}).")" />
+
+    <section aria-labelledby="seccion-catalogo">
+        <h2 class="h6 text-uppercase text-body-secondary" id="seccion-catalogo">Catálogo y stock</h2>
+        <div class="row row-cols-2 row-cols-md-3 g-2 mb-4">
+            <AtajoPanel Href="admin/productos" Icono="box-seam" Titulo="Productos" Descripcion="Precios, stock e imágenes" />
+            <AtajoPanel Href="admin/categorias" Icono="tags" Titulo="Categorías" />
+            <AtajoPanel Href="admin/movimientos" Icono="arrow-left-right" Titulo="Movimientos" Descripcion="Entradas y salidas de stock" />
+        </div>
+    </section>
+
+    <section aria-labelledby="seccion-operaciones">
+        <h2 class="h6 text-uppercase text-body-secondary" id="seccion-operaciones">Compras y ventas</h2>
+        <div class="row row-cols-2 row-cols-md-3 g-2 mb-4">
+            <AtajoPanel Href="admin/compras" Icono="truck" Titulo="Entradas" Descripcion="Compras a proveedores" />
+            <AtajoPanel Href="admin/ventas" Icono="receipt" Titulo="Ventas" />
+            <AtajoPanel Href="admin/reportes" Icono="file-earmark-bar-graph" Titulo="Reportes PDF" />
+            <AtajoPanel Href="admin/proveedores" Icono="building" Titulo="Proveedores" />
+            <AtajoPanel Href="admin/clientes" Icono="people" Titulo="Clientes" />
+        </div>
+    </section>
+
+    @if (Sesion.EsAdministrador)
+    {
+        <section aria-labelledby="seccion-admin">
+            <h2 class="h6 text-uppercase text-body-secondary" id="seccion-admin">Administración</h2>
+            <div class="row row-cols-2 row-cols-md-3 g-2">
+                <AtajoPanel Href="admin/usuarios" Icono="shield-lock" Titulo="Usuarios y roles" />
+                <AtajoPanel Href="admin/auditoria" Icono="journal-text" Titulo="Auditoría" Descripcion="Quién hizo qué" />
+                <AtajoPanel Href="admin/errores" Icono="bug" Titulo="Errores" Descripcion="Registro de fallas" />
+            </div>
+        </section>
+    }
+</div>

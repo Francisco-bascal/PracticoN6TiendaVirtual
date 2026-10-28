@@ -1,0 +1,18 @@
+<div class="input-group selector-cantidad w-auto" role="group" aria-label="Cantidad">
+    <button type="button" class="btn btn-outline-secondary" aria-label="Menos" disabled="@(Valor <= Minimo)" @onclick="() => Cambiar(Valor - 1)">
+        <i class="bi bi-dash-lg" aria-hidden="true"></i>
+    </button>
+    <span class="input-group-text justify-content-center fw-bold cantidad-valor" aria-live="polite">@Valor</span>
+    <button type="button" class="btn btn-outline-secondary" aria-label="Más" disabled="@(Valor >= Maximo)" @onclick="() => Cambiar(Valor + 1)">
+        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+    </button>
+</div>
+
+@code {
+    [Parameter] public int Valor { get; set; }
+    [Parameter] public EventCallback<int> ValorChanged { get; set; }
+    [Parameter] public int Minimo { get; set; } = 1;
+    [Parameter] public int Maximo { get; set; } = int.MaxValue;
+
+    private Task Cambiar(int nuevo) => ValorChanged.InvokeAsync(Math.Clamp(nuevo, Minimo, Maximo));
+}

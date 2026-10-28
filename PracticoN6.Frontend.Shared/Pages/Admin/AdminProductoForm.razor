@@ -1,0 +1,274 @@
+@page "/admin/productos/nuevo"
+@page "/admin/productos/{Id:int}"
+@attribute [Authorize(Roles = Roles.Personal)]
+@inject TiendaApi Tienda
+@inject SesionService Sesion
+@inject NotificacionesService Notificaciones
+@inject NavigationManager Navegacion
+
+<div class="container-md pagina-formulario py-3">
+    <EncabezadoPagina Titulo="@(EsNuevo ? "Nuevo producto" : "Editar producto")" Icono="@(EsNuevo ? "plus-circle" : "pencil-square")" />
+
+    <EstadoVista Cargando="_cargando" Error="@_errorCarga" Reintentar="Recargar">
+        <EditForm Model="_formulario" OnValidSubmit="Guardar">
+            <ValidacionBootstrap />
+
+            <div class="mb-3">
+                <label for="nombre" class="form-label">Nombre</label>
+                <InputText id="nombre" class="form-control form-control-lg" @bind-Value="_formulario.Nombre" />
+                <ValidationMessage For="() => _formulario.Nombre" />
+            </div>
+            <div class="mb-3">
+                <label for="descripcion" class="form-label">Descripción</label>
+                <InputTextArea id="descripcion" class="form-control" rows="3" @bind-Value="_formulario.Descripcion" />
+                <ValidationMessage For="() => _formulario.Descripcion" />
+            </div>
+            <div class="row g-2 mb-3">
+                <div class="col">
+                    <label for="precio" class="form-label">Precio ($)</label>
+                    <InputNumber id="precio" class="form-control" @bind-Value="_formulario.Precio" inputmode="decimal" step="0.01" />
+                    <ValidationMessage For="() => _formulario.Precio" />
+                </div>
+                @if (EsNuevo)
+                {
+                    <div class="col">
+                        <label for="stock" class="form-label">Stock inicial</label>
+                        <InputNumber id="stock" class="form-control" @bind-Value="_formulario.Stock" inputmode="numeric" />
+                        <ValidationMessage For="() => _formulario.Stock" />
+                    </div>
+                }
+            </div>
+            <div class="mb-3">
+                <label for="categoria" class="form-label">Categoría</label>
+                <InputSelect id="categoria" class="form-select" @bind-Value="_formulario.CategoriaId">
+                    <option value="0">Elija una categoría</option>
+                    @foreach (var categoria in _categorias)
+                    {
+                        <option value="@categoria.CategoriaId">@categoria.Nombre</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => _formulario.CategoriaId" />
+            </div>
+
+            @if (_error != null)
+            {
+                <Alerta Tipo="error">@_error</Alerta>
+            }
+
+            <button class="btn btn-primary btn-lg w-100" type="submit" disabled="@_guardando">
+                @if (_guardando)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                }
+                @(_guardando ? "Guardando..." : EsNuevo ? "Crear producto" : "Guardar cambios")
+            </button>
+        </EditForm>
+
+        @if (!EsNuevo && _producto != null)
+        {
+            <section class="card shadow-sm mt-4" aria-labelledby="imagen-titulo">
+                <div class="card-body">
+                    <h2 class="h5" id="imagen-titulo">Imagen</h2>
+                    <div class="d-flex gap-3 align-items-center">
+                        <ImagenProducto Producto="_producto" Clase="miniatura rounded overflow-hidden" />
+                        <div class="flex-grow-1 min-w-0">
+                            <label for="imagen" class="visually-hidden">Elegir imagen</label>
+                            <InputFile id="imagen" class="form-control" OnChange="SubirImagen" accept="image/*" />
+                            <div class="form-text">JPG, PNG o WebP de hasta 5 MB.</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card shadow-sm mt-3" aria-labelledby="stock-titulo">
+                <div class="card-body">
+                    <h2 class="h5" id="stock-titulo">Stock</h2>
+                    <p>Stock actual: <InsigniaStock Stock="_producto.Stock" /></p>
+                    <div class="row g-2 mb-3">
+                        <div class="col-5">
+                            <label for="ajuste" class="form-label">Ajuste (+ suma, − resta)</label>
+                            <input id="ajuste" type="number" class="form-control" inputmode="numeric" placeholder="Ej.: -2" @bind="_ajuste" @bind:event="oninput" />
+                        </div>
+                        <div class="col-7">
+                            <label for="motivo" class="form-label">Motivo</label>
+                            <input id="motivo" class="form-control" placeholder="Ej.: rotura" maxlength="200" @bind="_observacion" />
+                        </div>
+                    </div>
+                    @if (_errorStock != null)
+                    {
+                        <Alerta Tipo="error">@_errorStock</Alerta>
+                    }
+                    <button type="button" class="btn btn-outline-primary w-100" disabled="@(_ajuste == 0 || _ajustando)" @onclick="AjustarStock">
+                        @if (_ajustando)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                        }
+                        Aplicar ajuste
+                    </button>
+                    <p class="form-text mt-2 mb-0">Cada ajuste queda registrado en <a href="admin/movimientos">Movimientos</a>.</p>
+                </div>
+            </section>
+
+            @if (Sesion.EsAdministrador)
+            {
+                <section class="mt-4" aria-labelledby="peligro-titulo">
+                    <h2 class="h5 text-danger" id="peligro-titulo">Zona de peligro</h2>
+                    <button type="button" class="btn btn-outline-danger w-100" @onclick="() => _confirmarEliminar = true">
+                        <i class="bi bi-trash3 me-1" aria-hidden="true"></i>Eliminar producto
+                    </button>
+                </section>
+            }
+        }
+    </EstadoVista>
+</div>
+
+<DialogoConfirmacion Visible="_confirmarEliminar" Titulo="Eliminar producto" Peligro="true" TextoConfirmar="Eliminar"
+                     Mensaje="@($"¿Eliminar «{_producto?.Nombre}»? Solo es posible si nunca se compró ni se vendió.")"
+                     Confirmado="Eliminar" Cancelado="() => _confirmarEliminar = false" />
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private readonly FormularioProducto _formulario = new();
+    private List<Categoria> _categorias = new();
+    private Producto? _producto;
+    private string? _errorCarga;
+    private string? _error;
+    private string? _errorStock;
+    private int _ajuste;
+    private string? _observacion;
+    private bool _cargando = true;
+    private bool _guardando;
+    private bool _ajustando;
+    private bool _confirmarEliminar;
+
+    private bool EsNuevo => Id == null;
+
+    protected override Task OnParametersSetAsync() => Recargar();
+
+    private async Task Recargar()
+    {
+        _cargando = true;
+        _errorCarga = null;
+
+        try
+        {
+            _categorias = await Tienda.ObtenerCategoriasAsync();
+
+            if (Id.HasValue)
+            {
+                await CargarProductoAsync();
+            }
+            else if (_categorias.Count > 0)
+            {
+                _formulario.CategoriaId = 0;
+            }
+        }
+        catch (ApiException ex)
+        {
+            _errorCarga = ex.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task CargarProductoAsync()
+    {
+        _producto = await Tienda.ObtenerProductoAsync(Id!.Value);
+        _formulario.Nombre = _producto.Nombre;
+        _formulario.Descripcion = _producto.Descripcion;
+        _formulario.Precio = _producto.Precio;
+        _formulario.Stock = _producto.Stock;
+        _formulario.CategoriaId = _producto.CategoriaId;
+    }
+
+    private async Task Guardar()
+    {
+        _guardando = true;
+        _error = null;
+
+        try
+        {
+            if (EsNuevo)
+            {
+                var creado = await Tienda.CrearProductoAsync(_formulario);
+                Notificaciones.Exito("Producto creado. Ahora puede cargarle una imagen.");
+                Navegacion.NavigateTo($"admin/productos/{creado.ProductoId}", replace: true);
+            }
+            else
+            {
+                _producto = await Tienda.ActualizarProductoAsync(Id!.Value, _formulario);
+                Notificaciones.Exito("Cambios guardados.");
+            }
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _guardando = false;
+        }
+    }
+
+    private async Task AjustarStock()
+    {
+        _ajustando = true;
+        _errorStock = null;
+
+        try
+        {
+            await Tienda.AjustarStockAsync(Id!.Value, _ajuste, _observacion);
+            await CargarProductoAsync();
+            Notificaciones.Exito($"Stock actualizado: {_producto!.Stock}.");
+            _ajuste = 0;
+            _observacion = null;
+        }
+        catch (ApiException ex)
+        {
+            _errorStock = ex.Message;
+        }
+        finally
+        {
+            _ajustando = false;
+        }
+    }
+
+    private async Task SubirImagen(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            const long maximo = 5 * 1024 * 1024;
+            await using var flujo = e.File.OpenReadStream(maximo);
+
+            _producto = await Tienda.SubirImagenAsync(Id!.Value, flujo, e.File.Name, e.File.ContentType);
+            Notificaciones.Exito("Imagen actualizada.");
+        }
+        catch (IOException)
+        {
+            Notificaciones.Error("La imagen supera el tamaño máximo de 5 MB.");
+        }
+        catch (ApiException ex)
+        {
+            Notificaciones.Error(ex.Message);
+        }
+    }
+
+    private async Task Eliminar()
+    {
+        _confirmarEliminar = false;
+
+        try
+        {
+            await Tienda.EliminarProductoAsync(Id!.Value);
+            Notificaciones.Exito("Producto eliminado.");
+            Navegacion.NavigateTo("admin/productos", replace: true);
+        }
+        catch (ApiException ex)
+        {
+            Notificaciones.Error(ex.Message);
+        }
+    }
+}

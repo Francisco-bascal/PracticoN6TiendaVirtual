@@ -1,0 +1,106 @@
+@page "/login"
+@attribute [AllowAnonymous]
+@inject SesionService Sesion
+@inject ServidorApi Servidor
+@inject NavigationManager Navegacion
+
+<div class="container pagina-angosta py-4">
+    <div class="text-center mb-4">
+        <i class="bi bi-bag-heart display-3 text-primary" aria-hidden="true"></i>
+        <h1 class="h3 mt-2">Tienda Móvil</h1>
+        <p class="text-body-secondary">Ingrese para ver el catálogo y comprar.</p>
+    </div>
+
+    @if (_aviso != null)
+    {
+        <Alerta Tipo="aviso">@_aviso</Alerta>
+    }
+
+    <EditForm Model="_formulario" OnValidSubmit="Ingresar">
+        <ValidacionBootstrap />
+
+        <div class="mb-3">
+            <label for="usuario" class="form-label">Usuario</label>
+            <InputText id="usuario" class="form-control form-control-lg" @bind-Value="_formulario.NombreUsuario" autocomplete="username" autocapitalize="none" />
+            <ValidationMessage For="() => _formulario.NombreUsuario" />
+        </div>
+
+        <div class="mb-3">
+            <label for="password" class="form-label">Contraseña</label>
+            <EntradaPassword Id="password" @bind-Value="_formulario.Password" />
+            <ValidationMessage For="() => _formulario.Password" />
+        </div>
+
+        @if (_error != null)
+        {
+            <Alerta Tipo="error">@_error</Alerta>
+        }
+
+        <button class="btn btn-primary btn-lg w-100" type="submit" disabled="@_enviando">
+            @if (_enviando)
+            {
+                <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+            }
+            @(_enviando ? "Ingresando..." : "Ingresar")
+        </button>
+    </EditForm>
+
+    <p class="text-center mt-3">¿No tiene cuenta? <a href="registro">Regístrese</a></p>
+    <p class="text-center small">
+        <a href="servidor" class="text-body-secondary"><i class="bi bi-hdd-network me-1" aria-hidden="true"></i>Servidor: @_servidor</a>
+    </p>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public string? Retorno { get; set; }
+
+    private readonly FormularioLogin _formulario = new();
+    private string? _aviso;
+    private string? _error;
+    private string _servidor = string.Empty;
+    private bool _enviando;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _aviso = Sesion.AvisoPendiente;
+        Sesion.AvisoPendiente = null;
+        _servidor = await Servidor.ObtenerUrlAsync();
+
+        await Sesion.AsegurarRestauradaAsync();
+        if (Sesion.EstaAutenticado)
+        {
+            Navegacion.NavigateTo(Destino(), replace: true);
+        }
+    }
+
+    private async Task Ingresar()
+    {
+        _enviando = true;
+        _error = null;
+
+        try
+        {
+            await Sesion.IniciarSesionAsync(_formulario.NombreUsuario, _formulario.Password);
+            Navegacion.NavigateTo(Destino(), replace: true);
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _enviando = false;
+        }
+    }
+
+    // Solo se acepta un destino interno: evita que un enlace manipulado redirija a otro sitio.
+    private string Destino()
+    {
+        bool valido = !string.IsNullOrWhiteSpace(Retorno)
+            && !Retorno.Contains("://")
+            && !Retorno.StartsWith("//")
+            && !Retorno.StartsWith("login");
+
+        return valido ? Retorno! : "";
+    }
+}

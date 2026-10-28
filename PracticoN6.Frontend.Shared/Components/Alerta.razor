@@ -1,0 +1,26 @@
+@* Mensaje destacado. Tipo: error, exito, aviso o info. *@
+<div class="alert alert-@Clase d-flex align-items-start gap-2 my-2" role="@(Tipo == "error" ? "alert" : "status")">
+    <i class="bi bi-@Icono flex-shrink-0 mt-1" aria-hidden="true"></i>
+    <div class="flex-grow-1 text-break">@ChildContent</div>
+</div>
+
+@code {
+    [Parameter] public string Tipo { get; set; } = "info";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string Clase => Tipo switch
+    {
+        "error" => "danger",
+        "exito" => "success",
+        "aviso" => "warning",
+        _ => "info"
+    };
+
+    private string Icono => Tipo switch
+    {
+        "error" => "exclamation-triangle-fill",
+        "exito" => "check-circle-fill",
+        "aviso" => "exclamation-circle-fill",
+        _ => "info-circle-fill"
+    };
+}

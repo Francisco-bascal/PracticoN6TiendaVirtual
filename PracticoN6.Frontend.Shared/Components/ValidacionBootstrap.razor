@@ -1,0 +1,8 @@
+@* Validación por Data Annotations con las clases de Bootstrap: el campo inválido recibe "is-invalid". Colocar dentro de un EditForm. *@
+<DataAnnotationsValidator />
+
+@code {
+    [CascadingParameter] private EditContext? Contexto { get; set; }
+
+    protected override void OnInitialized() => Contexto?.SetFieldCssClassProvider(new ProveedorClasesBootstrap());
+}

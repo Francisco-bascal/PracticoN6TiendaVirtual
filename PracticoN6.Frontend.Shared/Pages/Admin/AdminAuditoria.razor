@@ -1,0 +1,108 @@
+@page "/admin/auditoria"
+@attribute [Authorize(Roles = Roles.Administrador)]
+@inject TiendaApi Tienda
+
+<div class="container-md py-3">
+    <EncabezadoPagina Titulo="Auditoría" Icono="journal-text"
+                      Subtitulo="Quién hizo qué y cuándo: altas, cambios, bajas, anulaciones, inicios de sesión y reportes." />
+
+    <form class="card shadow-sm mb-3" @onsubmit="Filtrar" @onsubmit:preventDefault>
+        <div class="card-body">
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <label for="desde" class="form-label">Desde</label>
+                    <input id="desde" type="date" class="form-control" @bind="_desde" @bind:format="yyyy-MM-dd" />
+                </div>
+                <div class="col-6">
+                    <label for="hasta" class="form-label">Hasta</label>
+                    <input id="hasta" type="date" class="form-control" @bind="_hasta" @bind:format="yyyy-MM-dd" />
+                </div>
+            </div>
+            <div class="row g-2 mb-3">
+                <div class="col-6">
+                    <label for="usuario" class="form-label">Usuario</label>
+                    <input id="usuario" class="form-control" autocapitalize="none" placeholder="Todos" @bind="_usuario" />
+                </div>
+                <div class="col-6">
+                    <label for="entidad" class="form-label">Recurso</label>
+                    <select id="entidad" class="form-select" @bind="_entidad">
+                        <option value="">Todos</option>
+                        @foreach (var entidad in Entidades)
+                        {
+                            <option value="@entidad">@entidad</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-funnel me-1" aria-hidden="true"></i>Filtrar</button>
+        </div>
+    </form>
+
+    <EstadoVista Cargando="_pagina == null" Error="@_error" Vacio="_pagina?.Elementos.Count == 0" Reintentar="Cargar"
+                 IconoVacio="journal-text" MensajeVacio="No hay registros para esos filtros.">
+        <p class="small text-body-secondary mb-2">@_pagina!.TotalElementos @(_pagina.TotalElementos == 1 ? "registro" : "registros")</p>
+
+        <ul class="list-group shadow-sm">
+            @foreach (var registro in _pagina.Elementos)
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-start gap-2" @key="registro.RegistroAuditoriaId">
+                    <div class="min-w-0">
+                        <div class="fw-semibold">@registro.Usuario · @registro.Accion</div>
+                        <div class="small text-body-secondary">@Formato.FechaHora(registro.Fecha) · @registro.Entidad@(registro.EntidadId != null ? $" #{registro.EntidadId}" : "")</div>
+                        @if (!string.IsNullOrWhiteSpace(registro.Detalle))
+                        {
+                            <div class="small text-body-secondary text-break">@registro.Detalle</div>
+                        }
+                    </div>
+                    <span class="badge flex-shrink-0 @ClaseCodigo(registro.CodigoRespuesta)">@registro.CodigoRespuesta</span>
+                </li>
+            }
+        </ul>
+
+        <Paginador Pagina="_numero" TotalPaginas="_pagina.TotalPaginas" PaginaCambiada="IrAPagina" />
+    </EstadoVista>
+</div>
+
+@code {
+    private static readonly string[] Entidades =
+        { "Usuarios", "Productos", "Categorias", "Proveedores", "Clientes", "Compras", "Ventas", "Reportes", "Logs" };
+
+    private Pagina<RegistroAuditoria>? _pagina;
+    private DateTime? _desde;
+    private DateTime? _hasta;
+    private string _usuario = string.Empty;
+    private string _entidad = string.Empty;
+    private int _numero = 1;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => Cargar();
+
+    private Task Filtrar() => IrAPagina(1);
+
+    private Task IrAPagina(int numero)
+    {
+        _numero = numero;
+        return Cargar();
+    }
+
+    private static string ClaseCodigo(int codigo) => codigo switch
+    {
+        >= 500 => "text-bg-danger",
+        >= 400 => "text-bg-warning",
+        _ => "text-bg-success"
+    };
+
+    private async Task Cargar()
+    {
+        _error = null;
+
+        try
+        {
+            _pagina = await Tienda.ObtenerAuditoriaAsync(_desde, _hasta, _usuario, _entidad, _numero);
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

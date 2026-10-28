@@ -1,0 +1,168 @@
+@page "/admin/proveedores"
+@attribute [Authorize(Roles = Roles.Personal)]
+@inject TiendaApi Tienda
+@inject SesionService Sesion
+@inject NotificacionesService Notificaciones
+
+<div class="container-md pagina-formulario py-3">
+    <EncabezadoPagina Titulo="Proveedores" Icono="building" />
+
+    <section class="card shadow-sm mb-3" aria-labelledby="form-titulo">
+        <div class="card-body">
+            <h2 class="h5" id="form-titulo">@(_editandoId == null ? "Nuevo proveedor" : "Editar proveedor")</h2>
+            <EditForm Model="_formulario" OnValidSubmit="Guardar">
+                <ValidacionBootstrap />
+                <div class="mb-3">
+                    <label for="nombre" class="form-label">Nombre</label>
+                    <InputText id="nombre" class="form-control" @bind-Value="_formulario.Nombre" />
+                    <ValidationMessage For="() => _formulario.Nombre" />
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-12 col-sm-6">
+                        <label for="telefono" class="form-label">Teléfono</label>
+                        <InputText id="telefono" type="tel" class="form-control" @bind-Value="_formulario.Telefono" inputmode="tel" />
+                        <ValidationMessage For="() => _formulario.Telefono" />
+                    </div>
+                    <div class="col-12 col-sm-6">
+                        <label for="email" class="form-label">Correo</label>
+                        <InputText id="email" type="email" class="form-control" @bind-Value="_formulario.Email" inputmode="email" autocapitalize="none" />
+                        <ValidationMessage For="() => _formulario.Email" />
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="direccion" class="form-label">Dirección</label>
+                    <InputText id="direccion" class="form-control" @bind-Value="_formulario.Direccion" />
+                    <ValidationMessage For="() => _formulario.Direccion" />
+                </div>
+                @if (_error != null)
+                {
+                    <Alerta Tipo="error">@_error</Alerta>
+                }
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary flex-grow-1" type="submit" disabled="@_guardando">@(_editandoId == null ? "Agregar" : "Guardar")</button>
+                    @if (_editandoId != null)
+                    {
+                        <button class="btn btn-outline-secondary" type="button" @onclick="CancelarEdicion">Cancelar</button>
+                    }
+                </div>
+            </EditForm>
+        </div>
+    </section>
+
+    <EstadoVista Cargando="_proveedores == null" Vacio="_proveedores?.Count == 0" IconoVacio="building" MensajeVacio="Todavía no hay proveedores.">
+        <ul class="list-group shadow-sm">
+            @foreach (var proveedor in _proveedores!)
+            {
+                <li class="list-group-item d-flex align-items-center gap-2" @key="proveedor.ProveedorId">
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="fw-semibold">@proveedor.Nombre</div>
+                        <div class="small text-body-secondary text-break">@string.Join(" · ", new[] { proveedor.Telefono, proveedor.Email, proveedor.Direccion }.Where(x => !string.IsNullOrWhiteSpace(x)))</div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" aria-label="Editar @proveedor.Nombre" @onclick="() => Editar(proveedor)">
+                        <i class="bi bi-pencil" aria-hidden="true"></i> Editar
+                    </button>
+                    @if (Sesion.EsAdministrador)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-danger" aria-label="Eliminar @proveedor.Nombre" @onclick="() => _porEliminar = proveedor">
+                            <i class="bi bi-trash3" aria-hidden="true"></i> Eliminar
+                        </button>
+                    }
+                </li>
+            }
+        </ul>
+    </EstadoVista>
+</div>
+
+<DialogoConfirmacion Visible="_porEliminar != null" Titulo="Eliminar proveedor" Peligro="true" TextoConfirmar="Eliminar"
+                     Mensaje="@($"¿Eliminar a «{_porEliminar?.Nombre}»? Solo es posible si no tiene compras registradas.")"
+                     Confirmado="Eliminar" Cancelado="() => _porEliminar = null" />
+
+@code {
+    private List<Proveedor>? _proveedores;
+    private FormularioProveedor _formulario = new();
+    private int? _editandoId;
+    private Proveedor? _porEliminar;
+    private string? _error;
+    private bool _guardando;
+
+    protected override Task OnInitializedAsync() => Cargar();
+
+    private async Task Cargar()
+    {
+        try
+        {
+            _proveedores = (await Tienda.ObtenerProveedoresAsync()).Elementos;
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private void Editar(Proveedor proveedor)
+    {
+        _editandoId = proveedor.ProveedorId;
+        _formulario = new FormularioProveedor
+        {
+            Nombre = proveedor.Nombre,
+            Telefono = proveedor.Telefono,
+            Email = proveedor.Email,
+            Direccion = proveedor.Direccion
+        };
+        _error = null;
+    }
+
+    private void CancelarEdicion()
+    {
+        _editandoId = null;
+        _formulario = new FormularioProveedor();
+        _error = null;
+    }
+
+    private async Task Guardar()
+    {
+        _guardando = true;
+        _error = null;
+
+        try
+        {
+            if (_editandoId == null)
+            {
+                await Tienda.CrearProveedorAsync(_formulario);
+            }
+            else
+            {
+                await Tienda.ActualizarProveedorAsync(_editandoId.Value, _formulario);
+            }
+
+            Notificaciones.Exito("Proveedor guardado.");
+            CancelarEdicion();
+            await Cargar();
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _guardando = false;
+        }
+    }
+
+    private async Task Eliminar()
+    {
+        var proveedor = _porEliminar!;
+        _porEliminar = null;
+
+        try
+        {
+            await Tienda.EliminarProveedorAsync(proveedor.ProveedorId);
+            Notificaciones.Exito("Proveedor eliminado.");
+            await Cargar();
+        }
+        catch (ApiException ex)
+        {
+            Notificaciones.Error(ex.Message);
+        }
+    }
+}

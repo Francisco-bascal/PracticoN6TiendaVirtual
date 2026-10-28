@@ -1,0 +1,147 @@
+@page "/pedidos/{Id:int}"
+@attribute [Authorize]
+@inject TiendaApi Tienda
+@inject SesionService Sesion
+@inject IGestorArchivos Archivos
+@inject NotificacionesService Notificaciones
+
+<div class="container-md py-3">
+    <EstadoVista Cargando="_pedido == null" Error="@_error" Reintentar="CargarAsync">
+        @if (Nuevo)
+        {
+            <Alerta Tipo="exito"><strong>¡Compra realizada!</strong> Su pago fue aprobado.</Alerta>
+        }
+
+        <EncabezadoPagina Titulo="@($"Pedido N° {_pedido!.VentaId}")" Subtitulo="@($"{Formato.FechaHora(_pedido.Fecha)} · {_pedido.Cliente}")">
+            <Acciones>
+                @if (_pedido.Anulada)
+                {
+                    <span class="badge text-bg-danger">Anulado</span>
+                }
+            </Acciones>
+        </EncabezadoPagina>
+
+        <ul class="list-group shadow-sm mb-3">
+            @foreach (var item in _pedido.Items)
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-center gap-2" @key="item.ProductoId">
+                    <div>
+                        <div class="fw-semibold">@item.Producto</div>
+                        <div class="small text-body-secondary">@item.Cantidad × @Formato.Dinero(item.PrecioUnitario)</div>
+                    </div>
+                    <div class="fw-bold text-nowrap">@Formato.Dinero(item.Subtotal)</div>
+                </li>
+            }
+            <li class="list-group-item d-flex justify-content-between fs-5 fw-bold">
+                <span>Total</span>
+                <span>@Formato.Dinero(_pedido.Total)</span>
+            </li>
+        </ul>
+
+        @if (_pedido.MedioPago != null)
+        {
+            <p class="text-body-secondary">
+                <i class="bi bi-patch-check me-1" aria-hidden="true"></i>
+                Pagado con <strong>@_pedido.MedioPago</strong> · código de autorización <strong>@_pedido.CodigoAutorizacion</strong>
+            </p>
+        }
+
+        @if (Sesion.EsPersonal)
+        {
+            <div class="mb-3">
+                <label for="destino" class="form-label">Enviar a (opcional)</label>
+                <input id="destino" type="email" class="form-control" inputmode="email" autocapitalize="none"
+                       placeholder="Si lo deja vacío se envía a su correo" @bind="_destinatario" />
+            </div>
+        }
+
+        @if (_resultado != null)
+        {
+            <Alerta Tipo="@(_resultado.Enviado ? "exito" : "aviso")">@_resultado.Mensaje</Alerta>
+        }
+
+        @if (_errorAccion != null)
+        {
+            <Alerta Tipo="error">@_errorAccion</Alerta>
+        }
+
+        <div class="d-grid gap-2 d-sm-flex">
+            <button type="button" class="btn btn-outline-primary btn-lg flex-fill" disabled="@_ocupado" @onclick="VerComprobante">
+                <i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>Comprobante PDF
+            </button>
+            <button type="button" class="btn btn-primary btn-lg flex-fill" disabled="@_ocupado" @onclick="Enviar">
+                <i class="bi bi-envelope me-1" aria-hidden="true"></i>Enviar por correo
+            </button>
+        </div>
+    </EstadoVista>
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    [SupplyParameterFromQuery] public bool Nuevo { get; set; }
+
+    private Pedido? _pedido;
+    private ResultadoEnvio? _resultado;
+    private string? _error;
+    private string? _errorAccion;
+    private string? _destinatario;
+    private bool _ocupado;
+
+    protected override Task OnParametersSetAsync() => CargarAsync();
+
+    private async Task CargarAsync()
+    {
+        _pedido = null;
+        _error = null;
+
+        try
+        {
+            _pedido = await Tienda.ObtenerPedidoAsync(Id);
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task VerComprobante()
+    {
+        _ocupado = true;
+        _errorAccion = null;
+
+        try
+        {
+            byte[] pdf = await Tienda.ObtenerComprobanteAsync(Id);
+            await Archivos.GuardarYCompartirAsync($"comprobante-{Id}.pdf", pdf, "application/pdf");
+        }
+        catch (ApiException ex)
+        {
+            _errorAccion = ex.Message;
+        }
+        finally
+        {
+            _ocupado = false;
+        }
+    }
+
+    private async Task Enviar()
+    {
+        _ocupado = true;
+        _errorAccion = null;
+        _resultado = null;
+
+        try
+        {
+            _resultado = await Tienda.EnviarComprobanteAsync(Id, _destinatario);
+            Notificaciones.Mostrar(_resultado.Enviado ? "Comprobante enviado." : "El correo no se envió (ver detalle).", _resultado.Enviado ? "exito" : "info");
+        }
+        catch (ApiException ex)
+        {
+            _errorAccion = ex.Message;
+        }
+        finally
+        {
+            _ocupado = false;
+        }
+    }
+}

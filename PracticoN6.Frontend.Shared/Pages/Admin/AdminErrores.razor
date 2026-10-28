@@ -1,0 +1,84 @@
+@page "/admin/errores"
+@attribute [Authorize(Roles = Roles.Administrador)]
+@inject TiendaApi Tienda
+
+<div class="container-md py-3">
+    <EncabezadoPagina Titulo="Registro de errores" Icono="bug"
+                      Subtitulo="Errores no controlados del servidor y de la aplicación móvil." />
+
+    <div class="d-flex gap-2 overflow-auto sin-scrollbar pb-2 mb-2" role="group" aria-label="Origen del error">
+        <button type="button" class="btn btn-sm rounded-pill text-nowrap @(_origen == "" ? "btn-primary" : "btn-outline-secondary")"
+                aria-pressed="@(_origen == "" ? "true" : "false")" @onclick='() => Filtrar("")'>Todos</button>
+        <button type="button" class="btn btn-sm rounded-pill text-nowrap @(_origen == "API" ? "btn-primary" : "btn-outline-secondary")"
+                aria-pressed="@(_origen == "API" ? "true" : "false")" @onclick='() => Filtrar("API")'>Servidor</button>
+        <button type="button" class="btn btn-sm rounded-pill text-nowrap @(_origen == "App" ? "btn-primary" : "btn-outline-secondary")"
+                aria-pressed="@(_origen == "App" ? "true" : "false")" @onclick='() => Filtrar("App")'>Aplicación</button>
+    </div>
+
+    <EstadoVista Cargando="_pagina == null" Error="@_error" Vacio="_pagina?.Elementos.Count == 0" Reintentar="Cargar"
+                 IconoVacio="emoji-smile" MensajeVacio="No hay errores registrados.">
+        <p class="small text-body-secondary mb-2">@_pagina!.TotalElementos @(_pagina.TotalElementos == 1 ? "error" : "errores")</p>
+
+        @foreach (var error in _pagina.Elementos)
+        {
+            <div class="card shadow-sm mb-2" @key="error.RegistroErrorId">
+                <div class="card-body">
+                    <div class="fw-semibold text-break">
+                        <span class="badge me-1 @(error.Origen == "API" ? "text-bg-danger" : "text-bg-warning")">@error.Origen</span>
+                        #@error.RegistroErrorId · @error.Mensaje
+                    </div>
+                    <div class="small text-body-secondary text-break">
+                        @Formato.FechaHora(error.Fecha)
+                        @if (!string.IsNullOrWhiteSpace(error.Metodo)) { <text> · @error.Metodo</text> }
+                        @if (!string.IsNullOrWhiteSpace(error.Ruta)) { <text> @error.Ruta</text> }
+                        @if (!string.IsNullOrWhiteSpace(error.Usuario)) { <text> · @error.Usuario</text> }
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(error.StackTrace))
+                    {
+                        <details class="mt-2">
+                            <summary class="small">@(error.TipoExcepcion ?? "Detalle técnico")</summary>
+                            <pre class="traza mt-2">@error.StackTrace</pre>
+                        </details>
+                    }
+                </div>
+            </div>
+        }
+
+        <Paginador Pagina="_numero" TotalPaginas="_pagina.TotalPaginas" PaginaCambiada="IrAPagina" />
+    </EstadoVista>
+</div>
+
+@code {
+    private Pagina<RegistroError>? _pagina;
+    private string _origen = string.Empty;
+    private int _numero = 1;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => Cargar();
+
+    private Task Filtrar(string origen)
+    {
+        _origen = origen;
+        return IrAPagina(1);
+    }
+
+    private Task IrAPagina(int numero)
+    {
+        _numero = numero;
+        return Cargar();
+    }
+
+    private async Task Cargar()
+    {
+        _error = null;
+
+        try
+        {
+            _pagina = await Tienda.ObtenerErroresAsync(_origen, _numero);
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

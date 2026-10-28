@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <!--
+    Host web de la interfaz de la tienda (Blazor WebAssembly). Usa las mismas pantallas que la app móvil
+    (PracticoN6.Frontend.Shared) pero corre en un navegador: sirve para desarrollar y probar sin emulador.
+    La entrega del TP es la app Blazor Hybrid (PracticoN6.Frontend.Maui).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>PracticoN6.Frontend.Web</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.32" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.32" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PracticoN6.Frontend.Shared\PracticoN6.Frontend.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

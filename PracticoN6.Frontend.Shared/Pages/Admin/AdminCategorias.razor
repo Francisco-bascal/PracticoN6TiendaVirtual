@@ -1,0 +1,152 @@
+@page "/admin/categorias"
+@attribute [Authorize(Roles = Roles.Personal)]
+@inject TiendaApi Tienda
+@inject SesionService Sesion
+@inject NotificacionesService Notificaciones
+
+<div class="container-md pagina-formulario py-3">
+    <EncabezadoPagina Titulo="Categorías" Icono="tags" />
+
+    <section class="card shadow-sm mb-3" aria-labelledby="form-titulo">
+        <div class="card-body">
+            <h2 class="h5" id="form-titulo">@(_editandoId == null ? "Nueva categoría" : "Editar categoría")</h2>
+            <EditForm Model="_formulario" OnValidSubmit="Guardar">
+                <ValidacionBootstrap />
+                <div class="mb-3">
+                    <label for="nombre" class="form-label">Nombre</label>
+                    <InputText id="nombre" class="form-control" @bind-Value="_formulario.Nombre" />
+                    <ValidationMessage For="() => _formulario.Nombre" />
+                </div>
+                <div class="mb-3">
+                    <label for="descripcion" class="form-label">Descripción (opcional)</label>
+                    <InputText id="descripcion" class="form-control" @bind-Value="_formulario.Descripcion" />
+                </div>
+                @if (_error != null)
+                {
+                    <Alerta Tipo="error">@_error</Alerta>
+                }
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary flex-grow-1" type="submit" disabled="@_guardando">@(_editandoId == null ? "Agregar" : "Guardar")</button>
+                    @if (_editandoId != null)
+                    {
+                        <button class="btn btn-outline-secondary" type="button" @onclick="CancelarEdicion">Cancelar</button>
+                    }
+                </div>
+            </EditForm>
+        </div>
+    </section>
+
+    <EstadoVista Cargando="_categorias == null" Vacio="_categorias?.Count == 0" IconoVacio="tags" MensajeVacio="Todavía no hay categorías.">
+        <ul class="list-group shadow-sm">
+            @foreach (var categoria in _categorias!)
+            {
+                <li class="list-group-item d-flex align-items-center gap-2" @key="categoria.CategoriaId">
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="fw-semibold">@categoria.Nombre</div>
+                        @if (!string.IsNullOrWhiteSpace(categoria.Descripcion))
+                        {
+                            <div class="small text-body-secondary">@categoria.Descripcion</div>
+                        }
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" aria-label="Editar @categoria.Nombre" @onclick="() => Editar(categoria)">
+                        <i class="bi bi-pencil" aria-hidden="true"></i> Editar
+                    </button>
+                    @if (Sesion.EsAdministrador)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-danger" aria-label="Eliminar @categoria.Nombre" @onclick="() => _porEliminar = categoria">
+                            <i class="bi bi-trash3" aria-hidden="true"></i> Eliminar
+                        </button>
+                    }
+                </li>
+            }
+        </ul>
+    </EstadoVista>
+</div>
+
+<DialogoConfirmacion Visible="_porEliminar != null" Titulo="Eliminar categoría" Peligro="true" TextoConfirmar="Eliminar"
+                     Mensaje="@($"¿Eliminar la categoría «{_porEliminar?.Nombre}»? Solo es posible si no tiene productos.")"
+                     Confirmado="Eliminar" Cancelado="() => _porEliminar = null" />
+
+@code {
+    private List<Categoria>? _categorias;
+    private FormularioCategoria _formulario = new();
+    private int? _editandoId;
+    private Categoria? _porEliminar;
+    private string? _error;
+    private bool _guardando;
+
+    protected override Task OnInitializedAsync() => Cargar();
+
+    private async Task Cargar()
+    {
+        try
+        {
+            _categorias = await Tienda.ObtenerCategoriasAsync();
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private void Editar(Categoria categoria)
+    {
+        _editandoId = categoria.CategoriaId;
+        _formulario = new FormularioCategoria { Nombre = categoria.Nombre, Descripcion = categoria.Descripcion };
+        _error = null;
+    }
+
+    private void CancelarEdicion()
+    {
+        _editandoId = null;
+        _formulario = new FormularioCategoria();
+        _error = null;
+    }
+
+    private async Task Guardar()
+    {
+        _guardando = true;
+        _error = null;
+
+        try
+        {
+            if (_editandoId == null)
+            {
+                await Tienda.CrearCategoriaAsync(_formulario);
+            }
+            else
+            {
+                await Tienda.ActualizarCategoriaAsync(_editandoId.Value, _formulario);
+            }
+
+            Notificaciones.Exito("Categoría guardada.");
+            CancelarEdicion();
+            await Cargar();
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _guardando = false;
+        }
+    }
+
+    private async Task Eliminar()
+    {
+        var categoria = _porEliminar!;
+        _porEliminar = null;
+
+        try
+        {
+            await Tienda.EliminarCategoriaAsync(categoria.CategoriaId);
+            Notificaciones.Exito("Categoría eliminada.");
+            await Cargar();
+        }
+        catch (ApiException ex)
+        {
+            Notificaciones.Error(ex.Message);
+        }
+    }
+}

@@ -1,0 +1,98 @@
+@page "/admin/movimientos"
+@attribute [Authorize(Roles = Roles.Personal)]
+@inject TiendaApi Tienda
+
+<div class="container-md py-3">
+    <EncabezadoPagina Titulo="Movimientos de stock" Icono="arrow-left-right"
+                      Subtitulo="Libro de entradas y salidas: compras, ventas, anulaciones y ajustes." />
+
+    <form class="card shadow-sm mb-3" @onsubmit="Filtrar" @onsubmit:preventDefault>
+        <div class="card-body">
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <label for="desde" class="form-label">Desde</label>
+                    <input id="desde" type="date" class="form-control" @bind="_desde" @bind:format="yyyy-MM-dd" />
+                </div>
+                <div class="col-6">
+                    <label for="hasta" class="form-label">Hasta</label>
+                    <input id="hasta" type="date" class="form-control" @bind="_hasta" @bind:format="yyyy-MM-dd" />
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="motivo" class="form-label">Motivo</label>
+                <select id="motivo" class="form-select" @bind="_motivo">
+                    <option value="">Todos</option>
+                    @foreach (var motivo in Motivos)
+                    {
+                        <option value="@motivo">@Formato.EtiquetaMotivo(motivo)</option>
+                    }
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-funnel me-1" aria-hidden="true"></i>Filtrar</button>
+        </div>
+    </form>
+
+    <EstadoVista Cargando="_pagina == null" Error="@_error" Vacio="_pagina?.Elementos.Count == 0" Reintentar="Cargar"
+                 IconoVacio="arrow-left-right" MensajeVacio="No hay movimientos para esos filtros.">
+        <p class="small text-body-secondary mb-2">@_pagina!.TotalElementos @(_pagina.TotalElementos == 1 ? "movimiento" : "movimientos")</p>
+
+        <ul class="list-group shadow-sm">
+            @foreach (var movimiento in _pagina.Elementos)
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-start gap-2" @key="movimiento.MovimientoStockId">
+                    <div class="min-w-0">
+                        <div class="fw-semibold">@movimiento.Producto</div>
+                        <div class="small text-body-secondary">
+                            @Formato.FechaHora(movimiento.Fecha) · @Formato.EtiquetaMotivo(movimiento.Motivo)
+                            @if (movimiento.CompraId != null) { <text> · Compra @movimiento.CompraId</text> }
+                            @if (movimiento.VentaId != null) { <text> · Venta @movimiento.VentaId</text> }
+                            @if (!string.IsNullOrWhiteSpace(movimiento.Usuario)) { <text> · @movimiento.Usuario</text> }
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(movimiento.Observacion))
+                        {
+                            <div class="small fst-italic text-body-secondary">“@movimiento.Observacion”</div>
+                        }
+                    </div>
+                    <span class="badge fs-6 flex-shrink-0 @(movimiento.Cantidad > 0 ? "text-bg-success" : "text-bg-danger")">@(movimiento.Cantidad > 0 ? "+" : "")@movimiento.Cantidad</span>
+                </li>
+            }
+        </ul>
+
+        <Paginador Pagina="_numero" TotalPaginas="_pagina.TotalPaginas" PaginaCambiada="IrAPagina" />
+    </EstadoVista>
+</div>
+
+@code {
+    private static readonly string[] Motivos = { "StockInicial", "Compra", "Venta", "AnulacionCompra", "AnulacionVenta", "AjusteManual" };
+
+    private Pagina<Movimiento>? _pagina;
+    private DateTime? _desde;
+    private DateTime? _hasta;
+    private string _motivo = string.Empty;
+    private int _numero = 1;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => Cargar();
+
+    private Task Filtrar() => IrAPagina(1);
+
+    private Task IrAPagina(int numero)
+    {
+        _numero = numero;
+        return Cargar();
+    }
+
+    private async Task Cargar()
+    {
+        _error = null;
+
+        try
+        {
+            _pagina = await Tienda.ObtenerMovimientosAsync(_desde, _hasta, _motivo, _numero);
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

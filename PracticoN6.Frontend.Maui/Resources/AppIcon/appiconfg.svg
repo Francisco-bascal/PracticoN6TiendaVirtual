@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<svg width="456" height="456" viewBox="0 0 456 456" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <!-- Bolsa de compras -->
+    <path d="M128 170 H328 L346 340 Q348 360 328 360 H128 Q108 360 110 340 Z" fill="#F5B301" />
+    <path d="M176 190 V158 Q176 112 228 112 Q280 112 280 158 V190" fill="none" stroke="#F5B301" stroke-width="22" stroke-linecap="round" />
+    <circle cx="190" cy="228" r="13" fill="#1F3A5F" />
+    <circle cx="266" cy="228" r="13" fill="#1F3A5F" />
+</svg>

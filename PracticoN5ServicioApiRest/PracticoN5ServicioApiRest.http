@@ -1,0 +1,25 @@
+@PracticoN5ServicioApiRest_HostAddress = http://localhost:5276
+
+### Estado de la API (pública)
+GET {{PracticoN5ServicioApiRest_HostAddress}}/api/Usuarios/test
+
+### Iniciar sesión: copiar el "token" de la respuesta en la variable @token
+POST {{PracticoN5ServicioApiRest_HostAddress}}/api/Usuarios/login
+Content-Type: application/json
+
+{ "nombreUsuario": "admin", "password": "Admin1234" }
+
+###
+@token = PEGAR_AQUI_EL_TOKEN
+
+### Catálogo con búsqueda y filtros
+GET {{PracticoN5ServicioApiRest_HostAddress}}/api/Productos?busqueda=auri&soloDisponibles=true&orden=precio_asc
+Authorization: Bearer {{token}}
+
+### Reporte de stock en PDF
+GET {{PracticoN5ServicioApiRest_HostAddress}}/api/Reportes/stock
+Authorization: Bearer {{token}}
+
+### Auditoría (solo Administrador)
+GET {{PracticoN5ServicioApiRest_HostAddress}}/api/Logs/auditoria
+Authorization: Bearer {{token}}

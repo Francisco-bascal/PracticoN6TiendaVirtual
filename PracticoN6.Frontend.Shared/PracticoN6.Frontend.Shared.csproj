@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!--
+    Interfaz de usuario y lógica de la tienda, compartida por todos los hosts:
+    la app móvil (Blazor Hybrid / .NET MAUI) y el host web usado para desarrollo y pruebas.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>PracticoN6.Frontend.Shared</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.32" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="8.0.32" />
+  </ItemGroup>
+
+</Project>

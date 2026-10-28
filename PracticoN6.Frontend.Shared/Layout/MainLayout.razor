@@ -1,0 +1,109 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject SesionService Sesion
+@inject CarritoService Carrito
+@inject NavigationManager Navegacion
+@inject IJSRuntime JS
+
+<div class="app">
+    <a class="visually-hidden-focusable btn btn-warning m-2" href="#contenido">Saltar al contenido</a>
+
+    <ConectividadAviso />
+
+    <header class="app-barra d-flex align-items-center gap-1 text-white" data-bs-theme="dark">
+        @if (MostrarVolver)
+        {
+            <button type="button" class="btn btn-link text-white fs-3 px-2 py-1 lh-1" aria-label="Volver" @onclick="Volver">
+                <i class="bi bi-chevron-left" aria-hidden="true"></i>
+            </button>
+        }
+        <a class="navbar-brand text-white fw-bold fs-5 me-auto py-3" href="">
+            <i class="bi bi-bag-heart-fill text-warning me-1" aria-hidden="true"></i>Tienda Móvil
+        </a>
+        <AuthorizeView>
+            <Authorized>
+                <span class="small text-end lh-sm text-white-50">
+                    @context.User.Identity?.Name<br />
+                    <span class="badge text-bg-light">@Sesion.Rol</span>
+                </span>
+            </Authorized>
+        </AuthorizeView>
+    </header>
+
+    <main id="contenido" class="app-contenido bg-body-tertiary" tabindex="-1">
+        <BoundaryConRegistro @ref="_boundary">
+            <ChildContent>@Body</ChildContent>
+            <ErrorContent Context="excepcion">
+                <div class="container-md py-4 text-center">
+                    <i class="bi bi-emoji-frown display-3 text-body-secondary" aria-hidden="true"></i>
+                    <h1 class="h4 mt-2">Algo salió mal</h1>
+                    <Alerta Tipo="error">Ocurrió un error inesperado. Ya quedó registrado para que podamos revisarlo.</Alerta>
+                    <a class="btn btn-primary" href="" @onclick="_boundary!.Recover">Volver al inicio</a>
+                </div>
+            </ErrorContent>
+        </BoundaryConRegistro>
+    </main>
+
+    <Notificaciones />
+
+    <AuthorizeView>
+        <Authorized>
+            <nav class="tabbar" aria-label="Navegación principal">
+                <EnlaceTab Href="" Exacta="true" Icono="shop" Texto="Catálogo" />
+                <EnlaceTab Href="carrito" Icono="cart3" Texto="Carrito" Insignia="Carrito.Unidades" />
+                <EnlaceTab Href="pedidos" Icono="box-seam" Texto="Pedidos" />
+                @if (Sesion.EsPersonal)
+                {
+                    <EnlaceTab Href="admin" Icono="gear" Texto="Panel" />
+                }
+                <EnlaceTab Href="cuenta" Icono="person-circle" Texto="Cuenta" />
+            </nav>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+@code {
+    // Pantallas raíz de la barra inferior: no muestran el botón "volver".
+    private static readonly string[] Raices = { "", "carrito", "pedidos", "cuenta", "admin", "login" };
+
+    private BoundaryConRegistro? _boundary;
+
+    private bool MostrarVolver => !Raices.Contains(Navegacion.ToBaseRelativePath(Navegacion.Uri).Split('?', '#')[0].TrimEnd('/'));
+
+    protected override async Task OnInitializedAsync()
+    {
+        Navegacion.LocationChanged += AlNavegar;
+        Carrito.Cambio += AlCambiarEstado;
+        Sesion.SesionCambio += AlCambiarEstado;
+
+        // Primero se restaura la sesión guardada y luego se carga el carrito de ese usuario.
+        await Sesion.AsegurarRestauradaAsync();
+        await Carrito.CargarAsync();
+    }
+
+    private void AlNavegar(object? sender, LocationChangedEventArgs e)
+    {
+        // Al cambiar de pantalla se descarta el error de la anterior.
+        _boundary?.Recover();
+        StateHasChanged();
+    }
+
+    private void AlCambiarEstado() => InvokeAsync(StateHasChanged);
+
+    private async Task Volver()
+    {
+        bool pudo = await JS.InvokeAsync<bool>("tiendaVolver");
+
+        if (!pudo)
+        {
+            Navegacion.NavigateTo("");
+        }
+    }
+
+    public void Dispose()
+    {
+        Navegacion.LocationChanged -= AlNavegar;
+        Carrito.Cambio -= AlCambiarEstado;
+        Sesion.SesionCambio -= AlCambiarEstado;
+    }
+}

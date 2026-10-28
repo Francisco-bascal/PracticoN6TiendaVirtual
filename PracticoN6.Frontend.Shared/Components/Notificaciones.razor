@@ -1,0 +1,51 @@
+@implements IDisposable
+@inject NotificacionesService Servicio
+
+@* Avisos breves (toast de Bootstrap) sobre la barra de pestañas. Desaparecen solos o con la cruz. *@
+<div class="notificaciones" aria-live="polite">
+    @foreach (var n in _lista)
+    {
+        <div class="toast show align-items-center text-bg-@Clase(n) border-0" role="@(n.Tipo == "error" ? "alert" : "status")" @key="n">
+            <div class="d-flex">
+                <div class="toast-body">@n.Texto</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" aria-label="Cerrar aviso" @onclick="() => Quitar(n)"></button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<Notificacion> _lista = new();
+
+    protected override void OnInitialized() => Servicio.Nueva += AlLlegar;
+
+    private static string Clase(Notificacion n) => n.Tipo switch
+    {
+        "exito" => "success",
+        "error" => "danger",
+        _ => "dark"
+    };
+
+    private void AlLlegar(Notificacion notificacion)
+    {
+        InvokeAsync(async () =>
+        {
+            _lista.Add(notificacion);
+            StateHasChanged();
+
+            await Task.Delay(3500);
+
+            Quitar(notificacion);
+        });
+    }
+
+    private void Quitar(Notificacion notificacion)
+    {
+        if (_lista.Remove(notificacion))
+        {
+            StateHasChanged();
+        }
+    }
+
+    public void Dispose() => Servicio.Nueva -= AlLlegar;
+}

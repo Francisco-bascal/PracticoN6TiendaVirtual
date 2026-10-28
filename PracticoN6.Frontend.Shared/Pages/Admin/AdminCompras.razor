@@ -1,0 +1,98 @@
+@page "/admin/compras"
+@attribute [Authorize(Roles = Roles.Personal)]
+@inject TiendaApi Tienda
+@inject SesionService Sesion
+@inject NotificacionesService Notificaciones
+
+<div class="container-md py-3">
+    <EncabezadoPagina Titulo="Entradas de mercadería" Icono="truck"
+                      Subtitulo="Compras a proveedores: cada una suma stock a los productos comprados.">
+        <Acciones>
+            <a class="btn btn-warning flex-shrink-0" href="admin/compras/nueva"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Registrar</a>
+        </Acciones>
+    </EncabezadoPagina>
+
+    <EstadoVista Cargando="_pagina == null" Error="@_error" Vacio="_pagina?.Elementos.Count == 0" Reintentar="Cargar"
+                 IconoVacio="truck" MensajeVacio="Todavía no hay entradas registradas.">
+        <ul class="list-group shadow-sm">
+            @foreach (var compra in _pagina!.Elementos)
+            {
+                <li class="list-group-item @(compra.Anulada ? "opacity-50" : "")" @key="compra.CompraId">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div class="min-w-0">
+                            <div class="fw-semibold">
+                                Compra N° @compra.CompraId
+                                @if (compra.Anulada)
+                                {
+                                    <span class="badge text-bg-danger ms-1">Anulada</span>
+                                }
+                            </div>
+                            <div class="small text-body-secondary">@Formato.FechaHora(compra.Fecha) · @compra.Proveedor?.Nombre</div>
+                            <div class="small text-body-secondary">@string.Join(", ", compra.Detalles.Select(d => $"{d.Cantidad} × {d.Producto?.Nombre}"))</div>
+                        </div>
+                        <div class="text-end flex-shrink-0">
+                            <div class="fw-bold">@Formato.Dinero(compra.Total)</div>
+                            @if (Sesion.EsAdministrador && !compra.Anulada)
+                            {
+                                <button type="button" class="btn btn-link btn-sm text-danger p-0 mt-1" aria-label="Anular compra N° @compra.CompraId" @onclick="() => _porAnular = compra">Anular</button>
+                            }
+                        </div>
+                    </div>
+                </li>
+            }
+        </ul>
+
+        <Paginador Pagina="_numero" TotalPaginas="_pagina.TotalPaginas" PaginaCambiada="IrAPagina" />
+    </EstadoVista>
+</div>
+
+<DialogoConfirmacion Visible="_porAnular != null" Titulo="Anular compra" Peligro="true" TextoConfirmar="Anular"
+                     Mensaje="@($"¿Anular la compra N° {_porAnular?.CompraId}? Se descontará del stock lo que había sumado.")"
+                     Confirmado="Anular" Cancelado="() => _porAnular = null" />
+
+@code {
+    private Pagina<Compra>? _pagina;
+    private Compra? _porAnular;
+    private int _numero = 1;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => Cargar();
+
+    private Task IrAPagina(int numero)
+    {
+        _numero = numero;
+        return Cargar();
+    }
+
+    private async Task Cargar()
+    {
+        _error = null;
+
+        try
+        {
+            _pagina = await Tienda.ObtenerComprasAsync(_numero);
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task Anular()
+    {
+        var compra = _porAnular!;
+        _porAnular = null;
+
+        try
+        {
+            await Tienda.AnularCompraAsync(compra.CompraId);
+            Notificaciones.Exito($"Compra N° {compra.CompraId} anulada.");
+            await Cargar();
+        }
+        catch (ApiException ex)
+        {
+            // Típico: 409 porque el stock comprado ya se vendió.
+            Notificaciones.Error(ex.Message);
+        }
+    }
+}

@@ -1,0 +1,42 @@
+@implements IDisposable
+@inject CarritoService Carrito
+
+<div class="col">
+    <article class="card h-100 shadow-sm tarjeta-producto">
+        <a href="producto/@Producto.ProductoId" class="text-decoration-none text-reset" aria-label="Ver @Producto.Nombre">
+            <ImagenProducto Producto="Producto" Clase="rounded-top overflow-hidden" />
+            <div class="card-body p-2 pb-1">
+                <h2 class="h6 tarjeta-titulo mb-1">@Producto.Nombre</h2>
+                <p class="precio fw-bold fs-5 mb-1">@Formato.Dinero(Producto.Precio)</p>
+                <InsigniaStock Stock="Producto.Stock" />
+            </div>
+        </a>
+        <div class="card-footer bg-transparent border-0 p-2 pt-1">
+            <button type="button" class="btn btn-primary w-100"
+                    disabled="@(!Producto.Disponible || EnCarrito >= Producto.Stock)"
+                    @onclick="Agregar">
+                <i class="bi bi-cart-plus me-1" aria-hidden="true"></i>
+                @(Producto.Disponible ? (EnCarrito >= Producto.Stock ? "Máximo en el carrito" : "Agregar") : "No disponible")
+            </button>
+        </div>
+    </article>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Producto Producto { get; set; } = default!;
+    [Parameter] public EventCallback<string> Agregado { get; set; }
+
+    private int EnCarrito => Carrito.CantidadDe(Producto.ProductoId);
+
+    protected override void OnInitialized() => Carrito.Cambio += AlCambiarCarrito;
+
+    private void AlCambiarCarrito() => InvokeAsync(StateHasChanged);
+
+    private async Task Agregar()
+    {
+        int agregadas = await Carrito.AgregarAsync(Producto);
+        await Agregado.InvokeAsync(agregadas > 0 ? $"«{Producto.Nombre}» se agregó al carrito." : "Ya tiene todo el stock disponible en el carrito.");
+    }
+
+    public void Dispose() => Carrito.Cambio -= AlCambiarCarrito;
+}

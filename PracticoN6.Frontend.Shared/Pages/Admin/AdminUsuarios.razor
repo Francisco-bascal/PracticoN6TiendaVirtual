@@ -1,0 +1,212 @@
+@page "/admin/usuarios"
+@attribute [Authorize(Roles = Roles.Administrador)]
+@inject TiendaApi Tienda
+@inject NotificacionesService Notificaciones
+
+<div class="container-md pagina-formulario py-3">
+    <EncabezadoPagina Titulo="Usuarios y roles" Icono="shield-lock">
+        <Acciones>
+            <button type="button" class="btn @(_mostrarAlta ? "btn-outline-secondary" : "btn-warning") flex-shrink-0" aria-expanded="@(_mostrarAlta ? "true" : "false")"
+                    @onclick="() => _mostrarAlta = !_mostrarAlta">
+                @if (_mostrarAlta)
+                {
+                    <text>Cerrar</text>
+                }
+                else
+                {
+                    <i class="bi bi-plus-lg me-1" aria-hidden="true"></i><text>Nuevo</text>
+                }
+            </button>
+        </Acciones>
+    </EncabezadoPagina>
+
+    @if (_mostrarAlta)
+    {
+        <section class="card shadow-sm mb-4" aria-labelledby="alta-titulo">
+            <div class="card-body">
+                <h2 class="h5" id="alta-titulo">Nuevo usuario</h2>
+                <EditForm Model="_nuevo" OnValidSubmit="Crear">
+                    <ValidacionBootstrap />
+                    <div class="mb-3">
+                        <label for="n-usuario" class="form-label">Usuario</label>
+                        <InputText id="n-usuario" class="form-control" @bind-Value="_nuevo.NombreUsuario" autocapitalize="none" />
+                        <ValidationMessage For="() => _nuevo.NombreUsuario" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="n-email" class="form-label">Correo</label>
+                        <InputText id="n-email" type="email" class="form-control" @bind-Value="_nuevo.Email" inputmode="email" autocapitalize="none" />
+                        <ValidationMessage For="() => _nuevo.Email" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="n-password" class="form-label">Contraseña</label>
+                        <EntradaPassword Id="n-password" @bind-Value="_nuevo.Password" Autocomplete="new-password" />
+                        <ValidationMessage For="() => _nuevo.Password" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="n-rol" class="form-label">Rol</label>
+                        <InputSelect id="n-rol" class="form-select" @bind-Value="_nuevo.Rol">
+                            <option value="">Elija un rol</option>
+                            @foreach (var rol in _roles)
+                            {
+                                <option value="@rol.Nombre">@rol.Nombre</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="() => _nuevo.Rol" />
+                    </div>
+                    @if (_errorAlta != null)
+                    {
+                        <Alerta Tipo="error">@_errorAlta</Alerta>
+                    }
+                    <button class="btn btn-primary w-100" type="submit">Crear usuario</button>
+                </EditForm>
+            </div>
+        </section>
+    }
+
+    <h2 class="h5">Roles</h2>
+    <ul class="list-group shadow-sm mb-4">
+        @foreach (var rol in _roles)
+        {
+            <li class="list-group-item" @key="rol.Nombre">
+                <div class="fw-semibold">@rol.Nombre</div>
+                <div class="small text-body-secondary">@rol.Descripcion</div>
+            </li>
+        }
+    </ul>
+
+    <h2 class="h5">Usuarios</h2>
+    <EstadoVista Cargando="_filas == null" Error="@_error" Reintentar="Reintentar">
+        @foreach (var fila in _filas!)
+        {
+            <div class="card shadow-sm mb-2 @(fila.Usuario.Activo ? "" : "opacity-75")" @key="fila.Usuario.UsuarioId">
+                <div class="card-body">
+                    <div class="fw-semibold">
+                        @fila.Usuario.NombreUsuario
+                        @if (!fila.Usuario.Activo)
+                        {
+                            <span class="badge text-bg-danger ms-1">Inactivo</span>
+                        }
+                    </div>
+                    <div class="small text-body-secondary text-break mb-2">@fila.Usuario.Email</div>
+                    <div class="row g-2 align-items-center">
+                        <div class="col-7">
+                            <select class="form-select" aria-label="Rol de @fila.Usuario.NombreUsuario" @bind="fila.Rol">
+                                @foreach (var rol in _roles)
+                                {
+                                    <option value="@rol.Nombre">@rol.Nombre</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-5">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="activo-@fila.Usuario.UsuarioId" @bind="fila.Activo" />
+                                <label class="form-check-label" for="activo-@fila.Usuario.UsuarioId">Activo</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="button" class="btn btn-sm btn-primary" disabled="@(!fila.Cambiado)" @onclick="() => Guardar(fila)">Guardar</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" aria-label="Eliminar a @fila.Usuario.NombreUsuario" @onclick="() => _porEliminar = fila.Usuario">
+                            <i class="bi bi-trash3" aria-hidden="true"></i> Eliminar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </EstadoVista>
+</div>
+
+<DialogoConfirmacion Visible="_porEliminar != null" Titulo="Eliminar usuario" Peligro="true" TextoConfirmar="Eliminar"
+                     Mensaje="@($"¿Eliminar al usuario «{_porEliminar?.NombreUsuario}»? Si ya operó en el sistema, desactívelo en lugar de eliminarlo.")"
+                     Confirmado="Eliminar" Cancelado="() => _porEliminar = null" />
+
+@code {
+    private class FilaUsuario
+    {
+        public UsuarioAdmin Usuario { get; init; } = default!;
+        public string Rol { get; set; } = string.Empty;
+        public bool Activo { get; set; }
+        public bool Cambiado => Rol != Usuario.Rol || Activo != Usuario.Activo;
+    }
+
+    private List<FilaUsuario>? _filas;
+    private List<RolInfo> _roles = new();
+    private FormularioUsuario _nuevo = new();
+    private UsuarioAdmin? _porEliminar;
+    private bool _mostrarAlta;
+    private string? _error;
+    private string? _errorAlta;
+
+    protected override Task OnInitializedAsync() => Reintentar();
+
+    private async Task Reintentar()
+    {
+        _error = null;
+
+        try
+        {
+            _roles = await Tienda.ObtenerRolesAsync();
+            await Cargar();
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task Cargar()
+    {
+        var usuarios = await Tienda.ObtenerUsuariosAsync();
+        _filas = usuarios.Select(u => new FilaUsuario { Usuario = u, Rol = u.Rol, Activo = u.Activo }).ToList();
+    }
+
+    private async Task Crear()
+    {
+        _errorAlta = null;
+
+        try
+        {
+            await Tienda.CrearUsuarioAsync(_nuevo);
+            Notificaciones.Exito($"Usuario «{_nuevo.NombreUsuario}» creado.");
+            _nuevo = new FormularioUsuario();
+            _mostrarAlta = false;
+            await Cargar();
+        }
+        catch (ApiException ex)
+        {
+            _errorAlta = ex.Message;
+        }
+    }
+
+    private async Task Guardar(FilaUsuario fila)
+    {
+        try
+        {
+            await Tienda.ActualizarUsuarioAsync(fila.Usuario, fila.Rol, fila.Activo);
+            Notificaciones.Exito("Usuario actualizado.");
+            await Cargar();
+        }
+        catch (ApiException ex)
+        {
+            Notificaciones.Error(ex.Message);
+            await Cargar();
+        }
+    }
+
+    private async Task Eliminar()
+    {
+        var usuario = _porEliminar!;
+        _porEliminar = null;
+
+        try
+        {
+            await Tienda.EliminarUsuarioAsync(usuario.UsuarioId);
+            Notificaciones.Exito("Usuario eliminado.");
+            await Cargar();
+        }
+        catch (ApiException ex)
+        {
+            Notificaciones.Error(ex.Message);
+        }
+    }
+}

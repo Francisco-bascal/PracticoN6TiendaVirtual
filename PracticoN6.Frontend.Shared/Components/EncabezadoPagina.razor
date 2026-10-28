@@ -1,0 +1,24 @@
+@* Encabezado de pantalla: el único h1 de la vista, con subtítulo y acciones opcionales. *@
+<div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+    <div class="min-w-0">
+        <h1 class="h3 mb-1">
+            @if (!string.IsNullOrEmpty(Icono))
+            {
+                <i class="bi bi-@Icono me-2" aria-hidden="true"></i>
+            }
+            @Titulo
+        </h1>
+        @if (!string.IsNullOrEmpty(Subtitulo))
+        {
+            <p class="text-body-secondary mb-0">@Subtitulo</p>
+        }
+    </div>
+    @Acciones
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Titulo { get; set; } = string.Empty;
+    [Parameter] public string? Subtitulo { get; set; }
+    [Parameter] public string? Icono { get; set; }
+    [Parameter] public RenderFragment? Acciones { get; set; }
+}

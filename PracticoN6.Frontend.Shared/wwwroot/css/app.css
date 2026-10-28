@@ -1,0 +1,230 @@
+/*
+  Tienda Móvil — tema y estructura de la app.
+  La base visual es Bootstrap 5.3 (wwwroot/lib/bootstrap) y los íconos son Bootstrap Icons.
+  Este archivo contiene SOLO lo que Bootstrap no resuelve: la marca, la estructura (barra superior y de pestañas),
+  las áreas seguras del teléfono y ajustes táctiles. Los colores salen de variables --bs-* para que funcione el modo oscuro.
+*/
+
+/* ---------- Marca ---------- */
+
+:root,
+[data-bs-theme="light"] {
+    --app-azul: #1f3a5f;
+    --app-primario: #1f3a5f;
+    --app-primario-hover: #2a4d7d;
+    --app-primario-activo: #16304f;
+    --app-alto-barra: 56px;
+    --app-alto-tabs: 62px;
+
+    --bs-primary: #1f3a5f;
+    --bs-primary-rgb: 31, 58, 95;
+    --bs-link-color: #1f3a5f;
+    --bs-link-color-rgb: 31, 58, 95;
+    --bs-link-hover-color: #2a4d7d;
+    --bs-link-hover-color-rgb: 42, 77, 125;
+}
+
+[data-bs-theme="dark"] {
+    --app-primario: #3d6fb8;
+    --app-primario-hover: #4f86d6;
+    --app-primario-activo: #2f5d9e;
+
+    --bs-primary: #6ea0eb;
+    --bs-primary-rgb: 110, 160, 235;
+    --bs-link-color: #8ab4f8;
+    --bs-link-color-rgb: 138, 180, 248;
+    --bs-link-hover-color: #aecbfa;
+    --bs-link-hover-color-rgb: 174, 203, 250;
+}
+
+/* Bootstrap fija los colores de .btn-primary al compilar: se reemplazan por los de la marca. */
+.btn-primary {
+    --bs-btn-bg: var(--app-primario);
+    --bs-btn-border-color: var(--app-primario);
+    --bs-btn-color: #fff;
+    --bs-btn-hover-bg: var(--app-primario-hover);
+    --bs-btn-hover-border-color: var(--app-primario-hover);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-bg: var(--app-primario-activo);
+    --bs-btn-active-border-color: var(--app-primario-activo);
+    --bs-btn-active-color: #fff;
+    --bs-btn-disabled-bg: var(--app-primario);
+    --bs-btn-disabled-border-color: var(--app-primario);
+    --bs-btn-disabled-color: #fff;
+    --bs-btn-focus-shadow-rgb: 61, 111, 184;
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--bs-link-color);
+    --bs-btn-border-color: var(--app-primario);
+    --bs-btn-hover-bg: var(--app-primario);
+    --bs-btn-hover-border-color: var(--app-primario);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-bg: var(--app-primario-activo);
+    --bs-btn-active-border-color: var(--app-primario-activo);
+    --bs-btn-active-color: #fff;
+    --bs-btn-disabled-color: var(--bs-link-color);
+    --bs-btn-disabled-border-color: var(--app-primario);
+    --bs-btn-focus-shadow-rgb: 61, 111, 184;
+}
+
+/* ---------- Comportamiento táctil ---------- */
+
+html {
+    height: 100%;
+    touch-action: manipulation;           /* sin espera ni zoom por doble toque */
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    height: 100%;
+    margin: 0;
+    overscroll-behavior: none;
+}
+
+h1:focus { outline: none; }               /* el foco se mueve al h1 al navegar (FocusOnNavigate) */
+
+/* ---------- Estructura de la app ---------- */
+
+.app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+}
+
+.app-barra {
+    flex-shrink: 0;
+    min-height: var(--app-alto-barra);
+    padding: env(safe-area-inset-top) max(0.5rem, env(safe-area-inset-right)) 0 max(0.5rem, env(safe-area-inset-left));
+    background: var(--app-azul);
+}
+
+.app-contenido {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.app-contenido:focus { outline: none; }
+
+/* Barra de pestañas inferior (navegación principal). */
+.tabbar {
+    display: flex;
+    flex-shrink: 0;
+    background: var(--bs-body-bg);
+    border-top: 1px solid var(--bs-border-color);
+    padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.tab {
+    position: relative;
+    flex: 1;
+    min-height: var(--app-alto-tabs);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: 0.72rem;
+    color: var(--bs-secondary-color);
+    text-decoration: none;
+}
+
+.tab-icono { position: relative; font-size: 1.4rem; line-height: 1; }
+.tab.activo { color: var(--bs-link-color); font-weight: 600; box-shadow: inset 0 3px 0 var(--bs-warning); }
+.tab:focus-visible { outline: 3px solid var(--bs-focus-ring-color, rgba(13, 110, 253, 0.25)); outline-offset: -3px; }
+.tab-badge { position: absolute; top: -6px; left: 100%; transform: translateX(-45%); font-size: 0.65rem; }
+
+/* ---------- Productos ---------- */
+
+.producto-img { display: block; width: 100%; height: 100%; object-fit: cover; background: var(--bs-secondary-bg); }
+
+.imagen-vacia {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bs-secondary-bg);
+    color: var(--bs-secondary-color);
+    font-size: 3rem;
+}
+
+.miniatura { width: 52px; flex-shrink: 0; }
+.miniatura .imagen-vacia { font-size: 1.5rem; }
+
+.tarjeta-titulo {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 2.6em;
+    line-height: 1.3;
+}
+
+.sin-scrollbar { scrollbar-width: none; }
+.sin-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ---------- Avisos y formularios ---------- */
+
+.notificaciones {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--app-alto-tabs) + env(safe-area-inset-bottom) + 0.5rem);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.75rem;
+    pointer-events: none;
+    z-index: 1090;
+}
+
+.notificaciones .toast { pointer-events: auto; max-width: 100%; }
+
+/* Mensajes de validación de Blazor (ValidationMessage) con el aspecto de Bootstrap. */
+.validation-message { color: var(--bs-form-invalid-color); font-size: 0.875em; margin-top: 0.25rem; }
+
+pre.traza {
+    max-height: 260px;
+    overflow: auto;
+    margin: 0;
+    padding: 0.75rem;
+    border-radius: var(--bs-border-radius);
+    background: #101828;
+    color: #d0d5dd;
+    font-size: 0.72rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* ---------- Carga inicial y errores de Blazor ---------- */
+
+.pantalla-carga { display: flex; align-items: center; justify-content: center; height: 100vh; color: var(--bs-link-color); font-weight: 600; }
+
+#blazor-error-ui {
+    display: none;
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    padding: 0.6rem 1.25rem 0.7rem;
+    background: var(--bs-warning-bg-subtle);
+    color: var(--bs-warning-text-emphasis);
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    z-index: 2000;
+}
+
+#blazor-error-ui .dismiss { position: absolute; top: 0.5rem; right: 0.75rem; cursor: pointer; }
+
+/* ---------- Utilidades de la app ---------- */
+
+.pagina-angosta { max-width: 440px; }
+.min-w-0 { min-width: 0; }
+.selector-cantidad .btn { min-width: 44px; min-height: 44px; }
+.cantidad-valor { min-width: 3rem; }
+.offcanvas.hoja-inferior { height: auto; max-height: 85%; }   /* Bootstrap 5.3 fija la altura con .offcanvas.offcanvas-bottom: hace falta la misma especificidad */
+.pagina-formulario { max-width: 640px; }

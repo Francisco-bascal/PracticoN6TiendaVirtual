@@ -1,0 +1,18 @@
+@* Disponibilidad del producto: sin stock, últimas unidades o stock normal. *@
+@if (Stock <= 0)
+{
+    <span class="badge text-bg-danger">Sin stock</span>
+}
+else if (Stock <= UmbralBajo)
+{
+    <span class="badge text-bg-warning">¡Últimas @Stock @(Stock == 1 ? "unidad" : "unidades")!</span>
+}
+else
+{
+    <span class="badge text-bg-success">Stock: @Stock</span>
+}
+
+@code {
+    [Parameter] public int Stock { get; set; }
+    [Parameter] public int UmbralBajo { get; set; } = 5;
+}

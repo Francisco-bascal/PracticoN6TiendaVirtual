@@ -1,0 +1,78 @@
+@page "/servidor"
+@attribute [AllowAnonymous]
+@inject ServidorApi Servidor
+@inject TiendaApi Tienda
+
+<div class="container pagina-angosta py-4">
+    <EncabezadoPagina Titulo="Servidor" Icono="hdd-network" Subtitulo="Dirección de la API a la que se conecta la aplicación." />
+
+    <Alerta Tipo="info">
+        En el emulador de Android la computadora es <strong>10.0.2.2</strong>; desde un teléfono real use la IP de la
+        computadora en la red (por ejemplo 192.168.0.10).
+    </Alerta>
+
+    <div class="mb-3">
+        <label for="url" class="form-label">Dirección de la API</label>
+        <input id="url" class="form-control form-control-lg" @bind="_url" @bind:event="oninput" inputmode="url"
+               autocapitalize="none" autocomplete="off" placeholder="http://10.0.2.2:5276" />
+    </div>
+
+    @if (_mensaje != null)
+    {
+        <Alerta Tipo="@(_exito ? "exito" : "error")">@_mensaje</Alerta>
+    }
+
+    <div class="d-grid gap-2">
+        <button type="button" class="btn btn-primary btn-lg" disabled="@_ocupado" @onclick="GuardarYProbar">
+            @if (_ocupado)
+            {
+                <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+            }
+            @(_ocupado ? "Probando..." : "Guardar y probar")
+        </button>
+        <button type="button" class="btn btn-outline-secondary" disabled="@_ocupado" @onclick="Restablecer">Restablecer</button>
+    </div>
+    <p class="small text-body-secondary mt-3">Predeterminada: @Servidor.UrlPorDefecto</p>
+</div>
+
+@code {
+    private string _url = string.Empty;
+    private string? _mensaje;
+    private bool _exito;
+    private bool _ocupado;
+
+    protected override async Task OnInitializedAsync() => _url = await Servidor.ObtenerUrlAsync();
+
+    private async Task GuardarYProbar()
+    {
+        _ocupado = true;
+        _mensaje = null;
+
+        try
+        {
+            await Servidor.GuardarUrlAsync(_url);
+            _url = await Servidor.ObtenerUrlAsync();
+            await Tienda.ProbarConexionAsync();
+
+            _exito = true;
+            _mensaje = $"Conexión correcta con {_url}.";
+        }
+        catch (Exception ex) when (ex is ApiException or ArgumentException)
+        {
+            _exito = false;
+            _mensaje = ex.Message;
+        }
+        finally
+        {
+            _ocupado = false;
+        }
+    }
+
+    private async Task Restablecer()
+    {
+        await Servidor.RestablecerAsync();
+        _url = await Servidor.ObtenerUrlAsync();
+        _exito = true;
+        _mensaje = "Se restableció la dirección predeterminada.";
+    }
+}

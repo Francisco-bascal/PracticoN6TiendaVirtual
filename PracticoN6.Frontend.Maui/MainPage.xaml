@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:shared="clr-namespace:PracticoN6.Frontend.Shared;assembly=PracticoN6.Frontend.Shared"
+             x:Class="PracticoN6.Frontend.Maui.MainPage"
+             BackgroundColor="#1F3A5F">
+
+    <!-- Hospeda la interfaz Blazor (componente App del proyecto compartido) dentro de una vista web nativa. -->
+    <BlazorWebView x:Name="blazorWebView" HostPage="wwwroot/index.html">
+        <BlazorWebView.RootComponents>
+            <RootComponent Selector="#app" ComponentType="{x:Type shared:App}" />
+        </BlazorWebView.RootComponents>
+    </BlazorWebView>
+
+</ContentPage>

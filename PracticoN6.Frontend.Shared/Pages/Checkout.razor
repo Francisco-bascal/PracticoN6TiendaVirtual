@@ -1,0 +1,184 @@
+@page "/checkout"
+@attribute [Authorize]
+@inject TiendaApi Tienda
+@inject CarritoService Carrito
+@inject SesionService Sesion
+@inject NavigationManager Navegacion
+
+<div class="container-md py-3">
+    <EncabezadoPagina Titulo="Pago" Icono="credit-card" />
+
+    @if (Carrito.EstaVacio)
+    {
+        <div class="text-center text-body-secondary py-5">
+            <i class="bi bi-cart-x display-4 d-block mb-2" aria-hidden="true"></i>
+            <p class="mb-3">No hay productos para pagar.</p>
+            <a class="btn btn-primary" href="">Ver el catálogo</a>
+        </div>
+    }
+    else if (_cargando)
+    {
+        <Cargando />
+    }
+    else
+    {
+        <section class="card shadow-sm mb-3" aria-labelledby="resumen-titulo">
+            <div class="card-body">
+                <h2 class="h6 text-body-secondary text-uppercase" id="resumen-titulo">Resumen</h2>
+                @foreach (var item in Carrito.Items)
+                {
+                    <div class="d-flex justify-content-between gap-2 small py-1">
+                        <span>@item.Cantidad × @item.Nombre</span>
+                        <span>@Formato.Dinero(item.Subtotal)</span>
+                    </div>
+                }
+                <hr class="my-2" />
+                <div class="d-flex justify-content-between fs-5 fw-bold">
+                    <span>Total</span>
+                    <span>@Formato.Dinero(Carrito.Total)</span>
+                </div>
+            </div>
+        </section>
+
+        @if (Sesion.EsPersonal)
+        {
+            <div class="mb-3">
+                <label for="cliente" class="form-label">Venta de mostrador: cliente</label>
+                <select id="cliente" class="form-select form-select-lg" @bind="_clienteId">
+                    <option value="0">Compra a mi nombre</option>
+                    @foreach (var cliente in _clientes)
+                    {
+                        <option value="@cliente.ClienteId" @key="cliente.ClienteId">@cliente.NombreCompleto</option>
+                    }
+                </select>
+            </div>
+        }
+
+        <fieldset class="mb-3">
+            <legend class="h5">Medio de pago</legend>
+            <div class="list-group shadow-sm">
+                @foreach (var medio in _medios)
+                {
+                    <label class="list-group-item list-group-item-action d-flex align-items-center gap-3 py-3 opcion-pago @(_medioId == medio.MedioPagoId ? "active" : "")" @key="medio.MedioPagoId">
+                        <input class="form-check-input flex-shrink-0 mt-0" type="radio" name="medio-pago"
+                               checked="@(_medioId == medio.MedioPagoId)" @onchange="() => ElegirMedio(medio.MedioPagoId)" />
+                        <i class="bi bi-@IconoMedio(medio) fs-4" aria-hidden="true"></i>
+                        <span>@medio.Nombre</span>
+                    </label>
+                }
+            </div>
+        </fieldset>
+
+        @if (MedioElegido?.RequiereTarjeta == true)
+        {
+            <div class="mb-3">
+                <label for="tarjeta" class="form-label">Número de tarjeta</label>
+                <input id="tarjeta" class="form-control form-control-lg" inputmode="numeric" autocomplete="off"
+                       placeholder="0000 0000 0000 0000" maxlength="23" @bind="_tarjeta" @bind:event="oninput" />
+            </div>
+        }
+
+        <Alerta Tipo="info">
+            <strong>Pago simulado:</strong> no se realiza ningún cobro real y el número de tarjeta no se guarda.
+            Pruebe con <code>4242 4242 4242 4242</code> (aprobada) o <code>4000 0000 0000 0000</code> (rechazada).
+        </Alerta>
+
+        @if (_error != null)
+        {
+            <Alerta Tipo="error">@_error</Alerta>
+        }
+
+        <div class="sticky-bottom bg-body-tertiary pt-2 pb-3">
+            <button type="button" class="btn btn-warning btn-lg w-100" disabled="@(_enviando || _medioId == 0)" @onclick="Confirmar">
+                @if (_enviando)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                }
+                @(_enviando ? "Procesando pago..." : $"Pagar {Formato.Dinero(Carrito.Total)}")
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private List<MedioPago> _medios = new();
+    private List<Cliente> _clientes = new();
+    private int _medioId;
+    private int _clienteId;
+    private string _tarjeta = string.Empty;
+    private string? _error;
+    private bool _cargando = true;
+    private bool _enviando;
+
+    private static string IconoMedio(MedioPago medio) => medio.RequiereTarjeta ? "credit-card" : "bank";
+
+    private MedioPago? MedioElegido => _medios.FirstOrDefault(m => m.MedioPagoId == _medioId);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _medios = await Tienda.ObtenerMediosPagoAsync();
+
+            if (Sesion.EsPersonal)
+            {
+                _clientes = (await Tienda.ObtenerClientesAsync()).Elementos;
+            }
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private void ElegirMedio(int id)
+    {
+        _medioId = id;
+        _error = null;
+    }
+
+    private async Task Confirmar()
+    {
+        _error = null;
+
+        if (MedioElegido?.RequiereTarjeta == true)
+        {
+            int digitos = _tarjeta.Count(char.IsDigit);
+
+            if (digitos < 13 || digitos > 19)
+            {
+                _error = "Ingrese un número de tarjeta válido (entre 13 y 19 dígitos).";
+                return;
+            }
+        }
+
+        _enviando = true;
+
+        try
+        {
+            var pedido = await Tienda.ConfirmarCompraAsync(new SolicitudCheckout
+            {
+                Items = Carrito.Items.Select(i => new ItemCheckout { ProductoId = i.ProductoId, Cantidad = i.Cantidad }).ToList(),
+                MedioPagoId = _medioId,
+                NumeroTarjeta = MedioElegido?.RequiereTarjeta == true ? _tarjeta : null,
+                ClienteId = _clienteId > 0 ? _clienteId : null
+            });
+
+            await Carrito.VaciarAsync();
+            Navegacion.NavigateTo($"pedidos/{pedido.VentaId}?nuevo=true", replace: true);
+        }
+        catch (ApiException ex)
+        {
+            // 402: pago rechazado. 409: sin stock suficiente. En ambos casos el carrito se conserva.
+            _error = ex.EsConflicto ? $"{ex.Message} Ajuste las cantidades en el carrito." : ex.Message;
+        }
+        finally
+        {
+            _enviando = false;
+        }
+    }
+}

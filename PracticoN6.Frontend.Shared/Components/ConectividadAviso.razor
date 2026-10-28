@@ -1,0 +1,33 @@
+@implements IDisposable
+@inject IConectividad Conectividad
+
+@* Franja de aviso cuando el dispositivo se queda sin red. *@
+@if (!_hayConexion)
+{
+    <div class="text-bg-warning text-center small py-1 px-2" role="status">
+        <i class="bi bi-wifi-off me-1" aria-hidden="true"></i>
+        Sin conexión de red: lo que necesite el servidor no funcionará hasta que vuelva.
+    </div>
+}
+
+@code {
+    private bool _hayConexion = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Conectividad.Cambio += AlCambiar;
+        await Conectividad.IniciarAsync();
+        _hayConexion = Conectividad.HayConexion;
+    }
+
+    private void AlCambiar(bool hayConexion)
+    {
+        InvokeAsync(() =>
+        {
+            _hayConexion = hayConexion;
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose() => Conectividad.Cambio -= AlCambiar;
+}

@@ -1,0 +1,20 @@
+@* Acceso directo del panel de gestión: una tarjeta táctil con ícono, título y descripción opcional. *@
+<div class="col">
+    <a class="card h-100 shadow-sm text-reset text-decoration-none atajo" href="@Href">
+        <div class="card-body d-flex flex-column align-items-start gap-1">
+            <i class="bi bi-@Icono fs-2 text-primary" aria-hidden="true"></i>
+            <span class="fw-semibold">@Titulo</span>
+            @if (!string.IsNullOrEmpty(Descripcion))
+            {
+                <small class="text-body-secondary">@Descripcion</small>
+            }
+        </div>
+    </a>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Href { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Titulo { get; set; } = string.Empty;
+    [Parameter] public string Icono { get; set; } = "app";
+    [Parameter] public string? Descripcion { get; set; }
+}

@@ -1,0 +1,43 @@
+@*
+    Resuelve los cuatro estados de toda vista de datos: error (con "Reintentar"), cargando, vacío y con datos.
+    El contenido (ChildContent) solo se dibuja cuando hay datos, así que puede dar por hecho que no son nulos.
+*@
+@if (Error != null)
+{
+    <Alerta Tipo="error">@Error</Alerta>
+
+    @if (Reintentar.HasDelegate)
+    {
+        <button type="button" class="btn btn-outline-primary" @onclick="Reintentar">
+            <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Reintentar
+        </button>
+    }
+}
+else if (Cargando)
+{
+    <Cargando Texto="@TextoCarga" />
+}
+else if (Vacio)
+{
+    <div class="text-center text-body-secondary py-5">
+        <i class="bi bi-@IconoVacio display-4 d-block mb-2" aria-hidden="true"></i>
+        <p class="mb-3">@MensajeVacio</p>
+        @AccionesVacio
+    </div>
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    [Parameter] public bool Cargando { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public bool Vacio { get; set; }
+    [Parameter] public string TextoCarga { get; set; } = "Cargando...";
+    [Parameter] public string IconoVacio { get; set; } = "inbox";
+    [Parameter] public string MensajeVacio { get; set; } = "No hay datos para mostrar.";
+    [Parameter] public RenderFragment? AccionesVacio { get; set; }
+    [Parameter] public EventCallback Reintentar { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

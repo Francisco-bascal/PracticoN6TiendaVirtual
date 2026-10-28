@@ -1,0 +1,93 @@
+@page "/admin/ventas"
+@attribute [Authorize(Roles = Roles.Personal)]
+@inject TiendaApi Tienda
+@inject SesionService Sesion
+@inject NotificacionesService Notificaciones
+
+<div class="container-md py-3">
+    <EncabezadoPagina Titulo="Ventas" Icono="receipt"
+                      Subtitulo="Las ventas se registran desde el carrito. Para una venta de mostrador, arme el carrito y elija el cliente al pagar." />
+
+    <EstadoVista Cargando="_pagina == null" Error="@_error" Vacio="_pagina?.Elementos.Count == 0" Reintentar="Cargar"
+                 IconoVacio="receipt" MensajeVacio="Todavía no hay ventas.">
+        <ul class="list-group shadow-sm">
+            @foreach (var venta in _pagina!.Elementos)
+            {
+                <li class="list-group-item @(venta.Anulada ? "opacity-50" : "")" @key="venta.VentaId">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <a class="min-w-0 text-reset text-decoration-none" href="pedidos/@venta.VentaId">
+                            <div class="fw-semibold">
+                                Venta N° @venta.VentaId
+                                @if (venta.Anulada)
+                                {
+                                    <span class="badge text-bg-danger ms-1">Anulada</span>
+                                }
+                            </div>
+                            <div class="small text-body-secondary">@Formato.FechaHora(venta.Fecha) · @venta.Cliente?.NombreCompleto</div>
+                            <div class="small text-body-secondary">@string.Join(", ", venta.Detalles.Select(d => $"{d.Cantidad} × {d.Producto?.Nombre}"))</div>
+                        </a>
+                        <div class="text-end flex-shrink-0">
+                            <div class="fw-bold">@Formato.Dinero(venta.Total)</div>
+                            @if (Sesion.EsAdministrador && !venta.Anulada)
+                            {
+                                <button type="button" class="btn btn-link btn-sm text-danger p-0 mt-1" aria-label="Anular venta N° @venta.VentaId" @onclick="() => _porAnular = venta">Anular</button>
+                            }
+                        </div>
+                    </div>
+                </li>
+            }
+        </ul>
+
+        <Paginador Pagina="_numero" TotalPaginas="_pagina.TotalPaginas" PaginaCambiada="IrAPagina" />
+    </EstadoVista>
+</div>
+
+<DialogoConfirmacion Visible="_porAnular != null" Titulo="Anular venta" Peligro="true" TextoConfirmar="Anular"
+                     Mensaje="@($"¿Anular la venta N° {_porAnular?.VentaId}? El stock vendido volverá al inventario.")"
+                     Confirmado="Anular" Cancelado="() => _porAnular = null" />
+
+@code {
+    private Pagina<Venta>? _pagina;
+    private Venta? _porAnular;
+    private int _numero = 1;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => Cargar();
+
+    private Task IrAPagina(int numero)
+    {
+        _numero = numero;
+        return Cargar();
+    }
+
+    private async Task Cargar()
+    {
+        _error = null;
+
+        try
+        {
+            _pagina = await Tienda.ObtenerVentasAsync(_numero);
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task Anular()
+    {
+        var venta = _porAnular!;
+        _porAnular = null;
+
+        try
+        {
+            await Tienda.AnularVentaAsync(venta.VentaId);
+            Notificaciones.Exito($"Venta N° {venta.VentaId} anulada.");
+            await Cargar();
+        }
+        catch (ApiException ex)
+        {
+            Notificaciones.Error(ex.Message);
+        }
+    }
+}

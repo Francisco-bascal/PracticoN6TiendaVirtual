@@ -1,0 +1,74 @@
+@page "/admin/productos"
+@attribute [Authorize(Roles = Roles.Personal)]
+@inject TiendaApi Tienda
+
+<div class="container-md py-3">
+    <EncabezadoPagina Titulo="Productos" Icono="box-seam">
+        <Acciones>
+            <a class="btn btn-warning flex-shrink-0" href="admin/productos/nuevo"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nuevo</a>
+        </Acciones>
+    </EncabezadoPagina>
+
+    <form class="input-group mb-3" role="search" @onsubmit="Buscar" @onsubmit:preventDefault>
+        <input type="search" class="form-control form-control-lg" placeholder="Buscar por nombre o descripción" aria-label="Buscar productos"
+               @bind="_busqueda" enterkeyhint="search" />
+        <button class="btn btn-primary" type="submit" aria-label="Buscar"><i class="bi bi-search" aria-hidden="true"></i></button>
+    </form>
+
+    <EstadoVista Cargando="_pagina == null" Error="@_error" Vacio="_pagina?.Elementos.Count == 0" Reintentar="Cargar"
+                 IconoVacio="box-seam" MensajeVacio="No hay productos.">
+        <p class="small text-body-secondary mb-2">@_pagina!.TotalElementos @(_pagina.TotalElementos == 1 ? "producto" : "productos")</p>
+
+        <div class="list-group shadow-sm">
+            @foreach (var producto in _pagina.Elementos)
+            {
+                <a class="list-group-item list-group-item-action d-flex align-items-center gap-3" href="admin/productos/@producto.ProductoId" @key="producto.ProductoId">
+                    <ImagenProducto Producto="producto" Clase="miniatura rounded overflow-hidden" />
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="fw-semibold text-break">@producto.Nombre</div>
+                        <div class="small text-body-secondary">@producto.Categoria · @Formato.Dinero(producto.Precio)</div>
+                    </div>
+                    <span class="flex-shrink-0 text-end"><InsigniaStock Stock="producto.Stock" /></span>
+                </a>
+            }
+        </div>
+
+        <Paginador Pagina="_numero" TotalPaginas="_pagina.TotalPaginas" PaginaCambiada="IrAPagina" />
+    </EstadoVista>
+</div>
+
+@code {
+    private Pagina<Producto>? _pagina;
+    private string _busqueda = string.Empty;
+    private string _busquedaAplicada = string.Empty;
+    private int _numero = 1;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => Cargar();
+
+    private Task Buscar()
+    {
+        _busquedaAplicada = _busqueda;
+        return IrAPagina(1);
+    }
+
+    private Task IrAPagina(int numero)
+    {
+        _numero = numero;
+        return Cargar();
+    }
+
+    private async Task Cargar()
+    {
+        _error = null;
+
+        try
+        {
+            _pagina = await Tienda.BuscarProductosAsync(_busquedaAplicada, null, false, "nombre", _numero, 15);
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

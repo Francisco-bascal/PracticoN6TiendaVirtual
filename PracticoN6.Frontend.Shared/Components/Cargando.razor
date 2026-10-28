@@ -1,0 +1,8 @@
+<div class="d-flex align-items-center justify-content-center gap-2 py-4 text-body-secondary" role="status">
+    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+    <span>@Texto</span>
+</div>
+
+@code {
+    [Parameter] public string Texto { get; set; } = "Cargando...";
+}

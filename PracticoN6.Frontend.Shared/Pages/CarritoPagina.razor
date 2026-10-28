@@ -1,0 +1,72 @@
+@page "/carrito"
+@attribute [Authorize]
+@implements IDisposable
+@inject CarritoService Carrito
+@inject NavigationManager Navegacion
+
+<div class="container-md py-3">
+    <EncabezadoPagina Titulo="Mi carrito" Icono="cart3" />
+
+    @if (Carrito.EstaVacio)
+    {
+        <div class="text-center text-body-secondary py-5">
+            <i class="bi bi-cart-x display-4 d-block mb-2" aria-hidden="true"></i>
+            <p class="mb-3">Su carrito está vacío.</p>
+            <a class="btn btn-primary" href="">Ver el catálogo</a>
+        </div>
+    }
+    else
+    {
+        <ul class="list-group shadow-sm mb-3">
+            @foreach (var item in Carrito.Items)
+            {
+                <li class="list-group-item d-flex gap-3 align-items-start" @key="item.ProductoId">
+                    <ImagenProducto Producto="Miniatura(item)" Clase="miniatura rounded overflow-hidden" />
+                    <div class="flex-grow-1 min-w-0">
+                        <a class="fw-semibold text-reset text-decoration-none" href="producto/@item.ProductoId">@item.Nombre</a>
+                        <div class="small text-body-secondary">@Formato.Dinero(item.PrecioUnitario) c/u</div>
+                        <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+                            <SelectorCantidad Valor="item.Cantidad" Minimo="1" Maximo="Math.Max(item.Stock, 1)"
+                                              ValorChanged="cantidad => Carrito.CambiarCantidadAsync(item.ProductoId, cantidad)" />
+                            @if (item.Cantidad >= item.Stock)
+                            {
+                                <span class="small text-body-secondary">Máximo disponible</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-bold text-nowrap">@Formato.Dinero(item.Subtotal)</div>
+                        <button type="button" class="btn btn-link text-danger p-0 mt-2" aria-label="Quitar @item.Nombre del carrito"
+                                @onclick="() => Carrito.QuitarAsync(item.ProductoId)">
+                            <i class="bi bi-trash3" aria-hidden="true"></i> Quitar
+                        </button>
+                    </div>
+                </li>
+            }
+        </ul>
+
+        <div class="sticky-bottom bg-body-tertiary pt-2 pb-3">
+            <div class="d-flex justify-content-between align-items-baseline fs-5 fw-bold mb-2">
+                <span>Total <small class="fw-normal text-body-secondary">(@Carrito.Unidades @(Carrito.Unidades == 1 ? "unidad" : "unidades"))</small></span>
+                <span>@Formato.Dinero(Carrito.Total)</span>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary" @onclick="Carrito.VaciarAsync">Vaciar</button>
+                <button type="button" class="btn btn-warning btn-lg flex-grow-1" @onclick="@(() => Navegacion.NavigateTo("checkout"))">
+                    Continuar con el pago <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    // El carrito solo guarda lo necesario para listar el producto; alcanza para mostrar su miniatura.
+    private static Producto Miniatura(ItemCarrito item) => new() { ProductoId = item.ProductoId, Nombre = item.Nombre, ImagenRuta = item.ImagenRuta };
+
+    protected override void OnInitialized() => Carrito.Cambio += AlCambiar;
+
+    private void AlCambiar() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Carrito.Cambio -= AlCambiar;
+}

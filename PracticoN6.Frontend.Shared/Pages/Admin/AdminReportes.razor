@@ -1,0 +1,149 @@
+@page "/admin/reportes"
+@attribute [Authorize(Roles = Roles.Personal)]
+@inject TiendaApi Tienda
+@inject IGestorArchivos Archivos
+@inject NotificacionesService Notificaciones
+
+<div class="container-md pagina-formulario py-3">
+    <EncabezadoPagina Titulo="Reportes PDF" Icono="file-earmark-bar-graph"
+                      Subtitulo="Genere un reporte para verlo, guardarlo o enviarlo por correo." />
+
+    <div class="mb-3">
+        <label for="tipo" class="form-label">Reporte</label>
+        <select id="tipo" class="form-select form-select-lg" @bind="_tipo">
+            <option value="stock">Stock actual (inventario valorizado)</option>
+            <option value="entradas">Entradas de mercadería (compras)</option>
+            <option value="salidas">Salidas de mercadería (ventas)</option>
+            <option value="movimientos">Movimientos de stock</option>
+        </select>
+    </div>
+
+    @if (UsaPeriodo)
+    {
+        <div class="row g-2 mb-3">
+            <div class="col-6">
+                <label for="desde" class="form-label">Desde</label>
+                <input id="desde" type="date" class="form-control" @bind="_desde" @bind:format="yyyy-MM-dd" />
+            </div>
+            <div class="col-6">
+                <label for="hasta" class="form-label">Hasta</label>
+                <input id="hasta" type="date" class="form-control" @bind="_hasta" @bind:format="yyyy-MM-dd" />
+            </div>
+        </div>
+    }
+
+    <button type="button" class="btn btn-primary btn-lg w-100" disabled="@(_ocupado != null)" @onclick="Ver">
+        @if (_ocupado == "ver")
+        {
+            <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+        }
+        else
+        {
+            <i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>
+        }
+        @(_ocupado == "ver" ? "Generando..." : "Ver / guardar PDF")
+    </button>
+
+    <hr class="my-4" />
+
+    <h2 class="h5">Enviar por correo</h2>
+    <div class="mb-3">
+        <label for="correo" class="form-label">Destinatario</label>
+        <input id="correo" type="email" class="form-control" inputmode="email" autocapitalize="none" placeholder="correo@ejemplo.com" @bind="_correo" />
+    </div>
+    <button type="button" class="btn btn-outline-primary w-100" disabled="@(_ocupado != null)" @onclick="Enviar">
+        @if (_ocupado == "enviar")
+        {
+            <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+        }
+        else
+        {
+            <i class="bi bi-envelope me-1" aria-hidden="true"></i>
+        }
+        @(_ocupado == "enviar" ? "Enviando..." : "Enviar reporte")
+    </button>
+
+    @if (_resultado != null)
+    {
+        <Alerta Tipo="@(_resultado.Enviado ? "exito" : "aviso")">@_resultado.Mensaje</Alerta>
+    }
+
+    @if (_error != null)
+    {
+        <Alerta Tipo="error">@_error</Alerta>
+    }
+</div>
+
+@code {
+    private string _tipo = "stock";
+    private DateTime? _desde = DateTime.Today.AddDays(-30);
+    private DateTime? _hasta = DateTime.Today;
+    private string _correo = string.Empty;
+    private string? _ocupado;
+    private string? _error;
+    private ResultadoEnvio? _resultado;
+
+    private bool UsaPeriodo => _tipo != "stock";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // El correo de la propia cuenta es el destinatario más habitual.
+            _correo = (await Tienda.ObtenerPerfilAsync()).Email;
+        }
+        catch (ApiException)
+        {
+            // Sin sugerencia: el usuario lo escribe.
+        }
+    }
+
+    private async Task Ver()
+    {
+        _ocupado = "ver";
+        _error = null;
+        _resultado = null;
+
+        try
+        {
+            byte[] pdf = await Tienda.ObtenerReporteAsync(_tipo, UsaPeriodo ? _desde : null, UsaPeriodo ? _hasta : null);
+            await Archivos.GuardarYCompartirAsync($"reporte-{_tipo}-{DateTime.Today:yyyyMMdd}.pdf", pdf, "application/pdf");
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _ocupado = null;
+        }
+    }
+
+    private async Task Enviar()
+    {
+        _error = null;
+        _resultado = null;
+
+        if (string.IsNullOrWhiteSpace(_correo))
+        {
+            _error = "Ingrese el correo del destinatario.";
+            return;
+        }
+
+        _ocupado = "enviar";
+
+        try
+        {
+            _resultado = await Tienda.EnviarReporteAsync(_tipo, _correo.Trim(), UsaPeriodo ? _desde : null, UsaPeriodo ? _hasta : null);
+            Notificaciones.Mostrar(_resultado.Enviado ? "Reporte enviado." : "El correo no se envió (ver detalle).", _resultado.Enviado ? "exito" : "info");
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _ocupado = null;
+        }
+    }
+}

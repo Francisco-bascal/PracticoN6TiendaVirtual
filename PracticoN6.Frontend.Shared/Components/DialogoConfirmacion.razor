@@ -1,0 +1,53 @@
+@* Confirmación modal con el componente modal de Bootstrap (solo clases CSS). No usa confirm() de JavaScript: la vista web de Android no lo muestra. *@
+@if (Visible)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show d-block" tabindex="-1" role="alertdialog" aria-modal="true" aria-labelledby="dialogo-titulo"
+         @ref="_dialogo" @onclick="Cancelar" @onkeydown="AlTeclear">
+        <div class="modal-dialog modal-dialog-centered" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="dialogo-titulo">@Titulo</h2>
+                    <button type="button" class="btn-close" aria-label="Cerrar" @onclick="Cancelar"></button>
+                </div>
+                <div class="modal-body">@Mensaje</div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="Cancelar">Cancelar</button>
+                    <button type="button" class="btn @(Peligro ? "btn-danger" : "btn-primary")" @onclick="Confirmar">@TextoConfirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string Titulo { get; set; } = "Confirmar";
+    [Parameter] public string Mensaje { get; set; } = string.Empty;
+    [Parameter] public string TextoConfirmar { get; set; } = "Aceptar";
+    [Parameter] public bool Peligro { get; set; }
+    [Parameter] public EventCallback Confirmado { get; set; }
+    [Parameter] public EventCallback Cancelado { get; set; }
+
+    private ElementReference _dialogo;
+    private bool _enfocado;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Al abrirse, el foco pasa al diálogo (accesibilidad y teclado); al cerrarse se vuelve a permitir.
+        if (Visible && !_enfocado)
+        {
+            _enfocado = true;
+            await _dialogo.FocusAsync();
+        }
+        else if (!Visible)
+        {
+            _enfocado = false;
+        }
+    }
+
+    private Task Confirmar() => Confirmado.InvokeAsync();
+    private Task Cancelar() => Cancelado.InvokeAsync();
+
+    private Task AlTeclear(KeyboardEventArgs e) => e.Key == "Escape" ? Cancelar() : Task.CompletedTask;
+}
