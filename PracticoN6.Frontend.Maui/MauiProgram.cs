@@ -10,9 +10,14 @@ public static class MauiProgram
     // Dirección de la API en desarrollo. En el emulador de Android, 10.0.2.2 es la computadora que lo aloja
     // (localhost sería el propio emulador). Desde la app se puede cambiar en la pantalla "Servidor".
 
+#if DEBUG
     private static readonly string UrlApiDesarrollo = DeviceInfo.DeviceType == DeviceType.Virtual
         ? "http://10.0.2.2:5276"   // emulador: 10.0.2.2 es la PC anfitriona
         : "http://localhost:5276"; // teléfono físico con "adb reverse"
+#else
+    // Compilación Release: la API publicada en el hosting (MonsterASP.NET).
+    private static readonly string UrlApiDesarrollo = "https://tiendavirtualtp6.runasp.net";
+#endif
 
     public static MauiApp CreateMauiApp()
     {

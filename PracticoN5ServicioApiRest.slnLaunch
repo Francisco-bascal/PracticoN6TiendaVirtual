@@ -10,7 +10,7 @@
       {
         "Path": "PracticoN6.Frontend.Maui\\PracticoN6.Frontend.Maui.csproj",
         "Action": "Start",
-        "DebugTarget": "Motorola moto g13 (Android 14.0 - API 34)"
+        "DebugTarget": "Samsung SM-A576B (Android 16.0 - API 36)"
       }
     ]
   },
